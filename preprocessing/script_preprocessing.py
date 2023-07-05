@@ -6,7 +6,8 @@ import wave
 import xml.etree.ElementTree
 
 
-def daily_talk(daily_talk_dir: str):
+def daily_talk(root_dir: str):
+    daily_talk_dir = os.path.join(root_dir, "data")
     for sub_dir in os.listdir(daily_talk_dir):
         sub_dir = os.path.join(daily_talk_dir, sub_dir)
 
@@ -16,14 +17,12 @@ def daily_talk(daily_talk_dir: str):
             x, _, _ = base.split('_')  # Split the filename at the underscores.
             return int(x)  # Convert the 'x' part to an integer and return it.
 
-        # remove files so that there will not be naming collision and make sure collecting all wav and txt files works
-        os.remove(os.path.join(sub_dir, os.path.basename(sub_dir) + ".wav"))
-        os.remove(os.path.join(sub_dir, os.path.basename(sub_dir) + ".json"))
-
         # preprocess audio
         wav_files = [os.path.join(sub_dir, sub_file) for sub_file in os.listdir(sub_dir) if sub_file.endswith(".wav")]
         wav_files.sort(key=sort_key)
-        with wave.open(os.path.join(sub_dir, os.path.basename(sub_dir) + ".wav"), 'wb') as wav_out:
+        if not os.path.exists(os.path.join(root_dir, "audio")):
+            os.makedirs(os.path.join(root_dir, "audio"))
+        with wave.open(os.path.join(root_dir, "audio", os.path.basename(sub_dir) + ".wav"), 'wb') as wav_out:
             for wav_file in wav_files:
                 with wave.open(wav_file, 'rb') as wav_in:
                     if not wav_out.getnframes():
@@ -39,12 +38,17 @@ def daily_talk(daily_talk_dir: str):
             _, speaker, _ = base.split('_')  # Split the filename at the underscores.
             with open(txt_file, 'r', encoding="utf-8") as txt_in:
                 transcript.append([speaker, txt_in.read()])
-        with open(os.path.join(sub_dir, os.path.basename(sub_dir) + ".json"), 'w') as json_out:
+        if not os.path.exists(os.path.join(root_dir, "transcript")):
+            os.makedirs(os.path.join(root_dir, "transcript"))
+        with open(os.path.join(root_dir, "transcript", os.path.basename(sub_dir) + ".json"), 'w') as json_out:
             json.dump(transcript, json_out, indent=4)
 
 
-def icsi(icsi_dir: str):
+def icsi(root_dir: str):
+    icsi_dir = os.path.join(root_dir, "ICSI_original_transcripts", "transcripts")
     for mrt_file in os.listdir(icsi_dir):
+        if mrt_file == "preambles.mrt" or mrt_file == "readme":
+            continue
         mrt_file = os.path.join(icsi_dir, mrt_file)
         tree = xml.etree.ElementTree.parse(mrt_file)
         root = tree.getroot()
@@ -56,14 +60,20 @@ def icsi(icsi_dir: str):
             utterance = segment.text.strip()
             if utterance != '':
                 transcript.append([speaker, utterance])
-        with open(os.path.join(icsi_dir, os.path.basename(mrt_file) + ".json"), 'w') as json_out:
+        if not os.path.exists(os.path.join(root_dir, "transcript")):
+            os.makedirs(os.path.join(root_dir, "transcript"))
+        with open(os.path.join(root_dir, "transcript", os.path.splitext(os.path.basename(mrt_file))[0] + ".json"), 'w') as json_out:
             json.dump(transcript, json_out, indent=4)
 
 
-def sbcsae(trn_dir: str, cha_dir: str):
+def sbcsae(root_dir: str):
+    cha_dir = os.path.join(root_dir, "SBCSAE_chat", "SBCSAE")
+    trn_dir = os.path.join(root_dir, "SBCorpus", "TRN")
     # extract speaker name
     all_speakers = []
     for cha_file in os.listdir(cha_dir):
+        if os.path.splitext(cha_file)[1] != ".cha":
+            continue
         file_speakers = []
         with open(os.path.join(cha_dir, cha_file), 'r', encoding="utf-8", errors="ignore") as cha:
             for line in cha.readlines():
@@ -71,7 +81,6 @@ def sbcsae(trn_dir: str, cha_dir: str):
                     parts = line.split("|")
                     if "Speaker" in parts:
                         file_speakers.append(parts[2])
-        print(file_speakers)
         all_speakers.append(file_speakers)
 
     TRANS = str.maketrans('', '', string.punctuation)
@@ -93,13 +102,18 @@ def sbcsae(trn_dir: str, cha_dir: str):
                         utterance.extend(line[2:])
             if speaker != "" and len(utterance) != 0:
                 transcript.append([speaker, ' '.join(utterance)])
-        with open(os.path.join(trn_dir, os.path.basename(trn_file) + ".json"), 'w') as json_out:
+        if not os.path.exists(os.path.join(root_dir, "transcript")):
+            os.makedirs(os.path.join(root_dir, "transcript"))
+        with open(os.path.join(root_dir, "transcript", os.path.splitext(os.path.basename(trn_file))[0] + ".json"), 'w') as json_out:
             json.dump(transcript, json_out, indent=4)
 
 
-def callhome(cha_dir: str):
+def callhome(root_dir: str):
+    cha_dir = os.path.join(root_dir, "eng", "eng")
     TRANS = str.maketrans('', '', string.punctuation)
     for cha_file in os.listdir(cha_dir):
+        if os.path.splitext(cha_file)[1] != ".cha":
+            continue
         transcript = []
         speaker = ""
         utterance = []
@@ -121,11 +135,14 @@ def callhome(cha_dir: str):
             if speaker != "" and len(utterance) != 0:
                 utterance = [s.translate(TRANS) for s in utterance if s[:2] != "&=" and '\x15' not in s and s.translate(TRANS) != '']
                 transcript.append([speaker, ' '.join(utterance)])
-        with open(os.path.join(cha_dir, os.path.basename(cha_file) + ".json"), 'w') as json_out:
+        if not os.path.exists(os.path.join(root_dir, "transcript")):
+            os.makedirs(os.path.join(root_dir, "transcript"))
+        with open(os.path.join(root_dir, "transcript", os.path.splitext(os.path.basename(cha_file))[0] + ".json"), 'w') as json_out:
             json.dump(transcript, json_out, indent=4)
 
 
-def libricss(libricss_dir: str):
+def libricss(root_dir: str):
+    libricss_dir = os.path.join(root_dir, "for_release")
     for root, dirnames, filenames in os.walk(libricss_dir):
         if len(filenames) == 1 and filenames[0] == "meeting_info.txt":
             txt_path = os.path.join(root, filenames[0])
@@ -140,7 +157,8 @@ def libricss(libricss_dir: str):
                 json.dump(transcript, json_out, indent=4)
 
 
-def chime5(chime5_dir: str):
+def chime5(root_dir: str):
+    chime5_dir = os.path.join(root_dir, "CHiME5_transcriptions", "CHiME5", "transcriptions")
     for root, dirnames, filenames in os.walk(chime5_dir):
         for filename in filenames:
             if os.path.splitext(filename)[1] == ".json":
@@ -154,11 +172,14 @@ def chime5(chime5_dir: str):
                             transcript.append([speaker, utterance])
                         except KeyError:
                             pass
-                with open(os.path.join(root, os.path.splitext(os.path.basename(filename))[0]) + "_convert.json", 'w') as json_out:
+                if not os.path.exists(os.path.join(root_dir, "transcript")):
+                    os.makedirs(os.path.join(root_dir, "transcript"))
+                with open(os.path.join(root_dir, "transcript", os.path.splitext(os.path.basename(filename))[0]) + ".json", 'w') as json_out:
                     json.dump(transcript, json_out, indent=4)
 
 
-def ami(ami_dir: str):
+def ami(root_dir: str):
+    ami_dir = os.path.join(root_dir, "ami_public_manual_1.6.2", "words")
 
     def group_to_utterance(word_list: list[tuple]) -> list:
         transcript = []
@@ -192,7 +213,9 @@ def ami(ami_dir: str):
             word_list.sort(key=lambda x: x[0])
             transcript = group_to_utterance(word_list)
             # write to json
-            with open(os.path.join(ami_dir, current_meeting + ".json"), 'w') as json_out:
+            if not os.path.exists(os.path.join(root_dir, "transcript")):
+                os.makedirs(os.path.join(root_dir, "transcript"))
+            with open(os.path.join(root_dir, "transcript", current_meeting + ".json"), 'w') as json_out:
                 json.dump(transcript, json_out, indent=4)
             word_list = []
         word_list.extend([(float(e.attrib['starttime']), speaker, e.text) for e in word_elements if "starttime" in e.attrib])
@@ -201,16 +224,17 @@ def ami(ami_dir: str):
         word_list.sort(key=lambda x: x[0])
         transcript = group_to_utterance(word_list)
         # write to json
-        with open(os.path.join(ami_dir, current_meeting + ".json"), 'w') as json_out:
+        if not os.path.exists(os.path.join(root_dir, "transcript")):
+            os.makedirs(os.path.join(root_dir, "transcript"))
+        with open(os.path.join(root_dir, "transcript", current_meeting + ".json"), 'w') as json_out:
             json.dump(transcript, json_out, indent=4)
 
 
 if __name__ == "__main__":
-    # daily_talk("D:\\Text-based SD Dataset\\DailyTalk\\data")
-    # icsi("D:\\Text-based SD Dataset\\ICSI\\ICSI_original_transcripts\\transcripts")
-    # sbcsae("D:\\Text-based SD Dataset\\Santa Barbara Corpus of Spoken American English\\SBCorpus\\TRN",
-    #        "D:\\Text-based SD Dataset\\Santa Barbara Corpus of Spoken American English\\SBCSAE_chat\\SBCSAE")
-    # callhome("D:\\Text-based SD Dataset\\CallHome English\\eng\\eng")
-    # libricss("D:\\Text-based SD Dataset\\LibriCSS\\for_release")
-    # chime5("D:\\Text-based SD Dataset\\CHiME-5\\CHiME5_transcriptions\\CHiME5\\transcriptions")
-    ami("D:\\Text-based SD Dataset\\AMI\\ami_public_manual_1.6.2\\words")
+    # daily_talk("D:\\Text-based SD Dataset\\DailyTalk")
+    # icsi("D:\\Text-based SD Dataset\\ICSI")
+    # sbcsae("D:\\Text-based SD Dataset\\SBCSAE")
+    # callhome("D:\\Text-based SD Dataset\\CallHome English")
+    # libricss("D:\\Text-based SD Dataset\\LibriCSS")
+    # chime5("D:\\Text-based SD Dataset\\CHiME-5")
+    ami("D:\\Text-based SD Dataset\\AMI")
