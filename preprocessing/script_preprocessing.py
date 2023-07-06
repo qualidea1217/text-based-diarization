@@ -117,11 +117,13 @@ def callhome(root_dir: str):
         transcript = []
         speaker = ""
         utterance = []
+        begin = False
         with open(os.path.join(cha_dir, cha_file), 'r', encoding="utf-8", errors="ignore") as cha:
             for line in cha.readlines():
                 line = line.strip().split()
                 if line[0].startswith('*'):
                     # add to transcript
+                    begin = True
                     if speaker != "" and len(utterance) != 0:
                         utterance = [s.translate(TRANS) for s in utterance if s[:2] != "&=" and '\x15' not in s and s.translate(TRANS) != '']
                         transcript.append([speaker, ' '.join(utterance)])
@@ -129,7 +131,7 @@ def callhome(root_dir: str):
                     speaker = line[0].translate(TRANS)
                     utterance.extend(line[1:])
                 else:
-                    if line[0][0] != '%' and line[0][0] != '@':
+                    if line[0][0] != '%' and line[0][0] != '@' and begin:
                         utterance.extend(line)
             # add final utterance to transcript
             if speaker != "" and len(utterance) != 0:
@@ -230,6 +232,41 @@ def ami(root_dir: str):
             json.dump(transcript, json_out, indent=4)
 
 
+def callfriend(root_dir: str):
+    cha_dir = os.path.join(root_dir, "eng", "eng")
+    TRANS = str.maketrans('', '', string.punctuation)
+    for cha_file in os.listdir(cha_dir):
+        if os.path.splitext(cha_file)[1] != ".cha":
+            continue
+        transcript = []
+        speaker = ""
+        utterance = []
+        begin = False
+        with open(os.path.join(cha_dir, cha_file), 'r', encoding="utf-8", errors="ignore") as cha:
+            for line in cha.readlines():
+                line = line.strip().split()
+                if line[0].startswith('*'):
+                    # add to transcript
+                    begin = True
+                    if speaker != "" and len(utterance) != 0:
+                        utterance = [s.translate(TRANS) for s in utterance if s[:2] != "&=" and '\x15' not in s and s.translate(TRANS) != '']
+                        transcript.append([speaker, ' '.join(utterance).encode("ascii", "ignore").decode("ascii")])
+                        utterance = []
+                    speaker = line[0].translate(TRANS)
+                    utterance.extend(line[1:])
+                else:
+                    if line[0][0] != '%' and line[0][0] != '@' and begin:
+                        utterance.extend(line)
+            # add final utterance to transcript
+            if speaker != "" and len(utterance) != 0:
+                utterance = [s.translate(TRANS) for s in utterance if s[:2] != "&=" and '\x15' not in s and s.translate(TRANS) != '']
+                transcript.append([speaker, ' '.join(utterance).encode("ascii", "ignore").decode("ascii")])
+        if not os.path.exists(os.path.join(root_dir, "transcript")):
+            os.makedirs(os.path.join(root_dir, "transcript"))
+        with open(os.path.join(root_dir, "transcript", os.path.splitext(os.path.basename(cha_file))[0] + ".json"), 'w') as json_out:
+            json.dump(transcript, json_out, indent=4)
+
+
 if __name__ == "__main__":
     # daily_talk("D:\\Text-based SD Dataset\\DailyTalk")
     # icsi("D:\\Text-based SD Dataset\\ICSI")
@@ -237,4 +274,5 @@ if __name__ == "__main__":
     # callhome("D:\\Text-based SD Dataset\\CallHome English")
     # libricss("D:\\Text-based SD Dataset\\LibriCSS")
     # chime5("D:\\Text-based SD Dataset\\CHiME-5")
-    ami("D:\\Text-based SD Dataset\\AMI")
+    # ami("D:\\Text-based SD Dataset\\AMI")
+    callfriend("D:\\Text-based SD Dataset\\CallFriend")
