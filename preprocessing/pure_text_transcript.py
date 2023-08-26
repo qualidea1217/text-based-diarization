@@ -38,8 +38,6 @@ def get_interview_dataset(csv_dir: str, segmentation: None | str = None, speaker
         text_list.append(utterances)
         speaker_list.append(speaker_ids)
 
-    print("processing finish, start segmenting if specified")
-
     # for each utterance in each episode, do sentence segmentation and adjust speaker id accordingly
     # use spacy to do sentence segmentation
     if segmentation == "sentence":
@@ -62,9 +60,3 @@ if __name__ == "__main__":
     dict_out = {"episode_list": episode_list, "text_list": text_list, "speaker_list": speaker_list}
     with open("interview_sentence.json", 'w') as json_out:
         json.dump(dict_out, json_out, indent=4)
-
-    episode_list, text_list, speaker_list = get_interview_dataset("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/utterances.csv")
-    dict_out = {"episode_list": episode_list, "text_list": text_list, "speaker_list": speaker_list}
-    with open("interview_utterance.json", 'w') as json_out:
-        json.dump(dict_out, json_out, indent=4)
-
