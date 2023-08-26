@@ -2,17 +2,17 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config, Adam
 from torch.utils.data import Dataset, DataLoader
 import torch
 
-from preprocessing.pure_text_transcript import get_interview_dataset
-
 # 1. Data Representation & Preprocessing
 conversations = [
     ["Hello, how are you?", "I'm good, thanks!", "That's great!"],
-    ["Is this seat taken?", "No, you can sit here.", "Thanks!"]
+    ["Is this seat taken?", "No, you can sit here.", "Thanks!"],
+    ["Hi this is your friend Niko.", "Are you going out with me or not?", "I don't know a friend called Nike.", "Alright bye."]
 ]
 
 labels = [
     [1, 2, 1],
-    [1, 2, 1]
+    [1, 2, 1],
+    [1, 1, 2, 1]
 ]
 
 texts = [" ".join(conv) for conv in conversations]
@@ -53,10 +53,10 @@ class T5DiarizationDataset(Dataset):
 
 
 # 3. Model Loading, Fine-tuning, and Training
-tokenizer = T5Tokenizer.from_pretrained('t5-large')
-model = T5ForConditionalGeneration.from_pretrained('t5-large')
+tokenizer = T5Tokenizer.from_pretrained('t5-small', cache_dir="./tokenizers")
+model = T5ForConditionalGeneration.from_pretrained('t5-small', cache_dir="./models")
 
-dataset = T5DiarizationDataset(texts, label_strs, tokenizer, max_length=4096)
+dataset = T5DiarizationDataset(texts, label_strs, tokenizer, max_length=512)
 loader = DataLoader(dataset, batch_size=2)
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -87,10 +87,15 @@ def predict_speaker_sequence(model, tokenizer, conversation):
     input_ids = tokenizer.encode(input_text, return_tensors="pt").to(device)
     output = model.generate(input_ids)
     decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
+    print(decoded_output)
 
     return list(map(int, decoded_output.split()))
 
 
 conversation_test = ["Hey, are you available?", "Yes, what's up?", "Let's discuss the project."]
+predicted_sequence = predict_speaker_sequence(model, tokenizer, conversation_test)
+print(predicted_sequence)  # Might output something like [1, 2, 1] depending on the training
+
+conversation_test = ["Hi this is your friend Niko.", "Are you going out with me or not?", "I don't know a friend called Nike.", "Alright bye."]
 predicted_sequence = predict_speaker_sequence(model, tokenizer, conversation_test)
 print(predicted_sequence)  # Might output something like [1, 2, 1] depending on the training
