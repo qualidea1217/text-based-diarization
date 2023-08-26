@@ -190,8 +190,8 @@ if __name__ == "__main__":
     # retry_with_silence_removal(dir_dict["AMI audio"], dir_dict["AMI text"], 5, 5, 4)
     # retry_with_silence_removal(dir_dict["CallFriend audio"], dir_dict["CallFriend text"], 5, 5, 4)
     # retry_with_silence_removal(dir_dict["CallHome English audio"], dir_dict["CallHome English text"], 5, 5, 4)
-    # retry_with_silence_removal(dir_dict["CHiME-5 audio1"], dir_dict["CHiME-5 text1"], 5, 5, 4)  # running
-    # retry_with_silence_removal(dir_dict["CHiME-5 audio2"], dir_dict["CHiME-5 text2"], 5, 5, 4)  # running
+    retry_with_silence_removal(dir_dict["CHiME-5 audio1"], dir_dict["CHiME-5 text1"], 5, 5, 4, silence_thresh=-45.0)  # running
+    # retry_with_silence_removal(dir_dict["CHiME-5 audio2"], dir_dict["CHiME-5 text2"], 5, 5, 4)
     # retry_with_silence_removal(dir_dict["DailyTalk audio"], dir_dict["DailyTalk text"], 5, 5, 4)
-    retry_with_silence_removal(dir_dict["ICSI audio"], dir_dict["ICSI text"], 5, 5, 4)  # running
+    # retry_with_silence_removal(dir_dict["ICSI audio"], dir_dict["ICSI text"], 5, 5, 4)
     # retry_with_silence_removal(dir_dict["SBCSAE audio"], dir_dict["SBCSAE text"], 5, 5, 4)
