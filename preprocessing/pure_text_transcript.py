@@ -34,13 +34,14 @@ def get_interview_dataset(csv_dir: str, segmentation: None | str = None, speaker
             # if type(row["utterance"]) != float and row["speaker"] != "_NO_SPEAKER": # remove no-speaker utterance
                 utterances.append(row["utterance"])
                 speaker_ids.append(row["speaker"])
-        episode_list.append(episode)
+        episode_list.append(int(episode))
         text_list.append(utterances)
         speaker_list.append(speaker_ids)
 
     # for each utterance in each episode, do sentence segmentation and adjust speaker id accordingly
     # use spacy to do sentence segmentation
     if segmentation == "sentence":
+        spacy.require_gpu()  # if cupy is installed or spacy with gpu support is installed
         nlp = spacy.load("en_core_web_trf")
         for i in range(len(text_list)):
             sentences = []
@@ -56,7 +57,7 @@ def get_interview_dataset(csv_dir: str, segmentation: None | str = None, speaker
 
 
 if __name__ == "__main__":
-    episode_list, text_list, speaker_list = get_interview_dataset("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/utterances.csv", "sentence")
+    episode_list, text_list, speaker_list = get_interview_dataset("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/utterances.csv")
     dict_out = {"episode_list": episode_list, "text_list": text_list, "speaker_list": speaker_list}
-    with open("interview_sentence.json", 'w') as json_out:
+    with open("interview_utterance.json", 'w') as json_out:
         json.dump(dict_out, json_out, indent=4)
