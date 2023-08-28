@@ -1,29 +1,50 @@
-from transformers import T5Tokenizer, T5ForConditionalGeneration, T5Config, AdamW
+import json
+
+from transformers import T5Tokenizer, T5ForConditionalGeneration, TrainingArguments, Trainer
 from torch.utils.data import Dataset, DataLoader
 import torch
 
-# 1. Data Representation & Preprocessing
-conversations = [
-    ["Hello, how are you?", "I'm good, thanks!", "That's great!"],
-    ["Is this seat taken?", "No, you can sit here.", "Thanks!"],
-    ["Hi this is your friend Niko.", "Are you going out with me or not?", "I don't know a friend called Nike.", "Alright bye."]
-]
 
-labels = [
-    [1, 2, 1],
-    [1, 2, 1],
-    [1, 1, 2, 1]
-]
+def speaker_to_ints(input_list):
+    unique_dict = {}
+    output_list = []
+
+    for item in input_list:
+        if item not in unique_dict:
+            unique_dict[item] = len(unique_dict) + 1  # Add 1 here
+        output_list.append(unique_dict[item])
+
+    return output_list
+
+
+# 1. Data Representation & Preprocessing
+with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json", 'r') as json_in:
+    data_dict = json.load(json_in)
+    conversations = data_dict["text_list"]
+    labels = [speaker_to_ints(speaker_ids) for speaker_ids in data_dict["speaker_list"]]
 
 texts = [" ".join(conv) for conv in conversations]
 label_strs = [" ".join(map(str, label_seq)) for label_seq in labels]
 
 
-# 2. Custom Dataset and DataLoader
+# 2. Custom Dataset
 class T5DiarizationDataset(Dataset):
-    def __init__(self, texts, label_strs, tokenizer, max_length):
-        self.texts = texts
-        self.label_strs = label_strs
+    def __init__(self, texts, label_strs, tokenizer, max_length=1024):
+        # Filter the data right here based on max_length
+        filtered_texts = []
+        filtered_labels = []
+
+        for text, label in zip(texts, label_strs):
+            encoded_text = tokenizer.encode(f"classify: {text}", add_special_tokens=True)
+            encoded_label = tokenizer.encode(label, add_special_tokens=True)
+
+            if len(encoded_text) <= max_length and len(encoded_label) <= max_length:
+                # You may want to set different lengths for text and label if necessary
+                filtered_texts.append(text)
+                filtered_labels.append(label)
+
+        self.texts = filtered_texts
+        self.label_strs = filtered_labels
         self.tokenizer = tokenizer
         self.max_length = max_length
 
@@ -43,7 +64,14 @@ class T5DiarizationDataset(Dataset):
             truncation=True
         )
 
-        label_ids = self.tokenizer.encode(label_str, add_special_tokens=False)
+        label_ids = self.tokenizer.encode(
+            label_str,
+            add_special_tokens=True,
+            max_length=self.max_length,
+            # Use a suitable max_length for labels. It may not be the same as the input max_length.
+            pad_to_max_length=True,
+            truncation=True
+        )
 
         return {
             'input_ids': torch.tensor(inputs['input_ids'], dtype=torch.long),
@@ -52,50 +80,41 @@ class T5DiarizationDataset(Dataset):
         }
 
 
-# 3. Model Loading, Fine-tuning, and Training
+# Load tokenizer and model
 tokenizer = T5Tokenizer.from_pretrained('t5-small', cache_dir="./tokenizers")
 model = T5ForConditionalGeneration.from_pretrained('t5-small', cache_dir="./models")
 
-dataset = T5DiarizationDataset(texts, label_strs, tokenizer, max_length=512)
-loader = DataLoader(dataset, batch_size=2)
+# Create dataset and dataloader
+dataset = T5DiarizationDataset(texts, label_strs, tokenizer)
+print(len(dataset))
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model.to(device)
+# 3. Define Training Arguments and Initialize Trainer
+training_args = TrainingArguments(
+    output_dir='./results',
+    num_train_epochs=10,
+    per_device_train_batch_size=16,
+    optim="adamw_torch"
+)
 
-optimizer = AdamW(model.parameters(), lr=5e-5)
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=dataset
+)
 
-EPOCHS = 3
-
-model.train()
-for epoch in range(EPOCHS):
-    for batch in loader:
-        optimizer.zero_grad()
-        inputs = batch['input_ids'].to(device)
-        masks = batch['attention_mask'].to(device)
-        labels = batch['labels'].to(device)
-
-        outputs = model(input_ids=inputs, attention_mask=masks, labels=labels)
-        loss = outputs.loss
-
-        loss.backward()
-        optimizer.step()
+# 4. Train the Model
+trainer.train()
 
 
-# 4. Evaluation and Inference
+# 5. Inference
 def predict_speaker_sequence(model, tokenizer, conversation):
     input_text = "classify: " + " ".join(conversation)
-    input_ids = tokenizer.encode(input_text, return_tensors="pt").to(device)
+    input_ids = tokenizer.encode(input_text, return_tensors="pt")
     output = model.generate(input_ids)
     decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
-    print(decoded_output)
-
     return list(map(int, decoded_output.split()))
 
 
 conversation_test = ["Hey, are you available?", "Yes, what's up?", "Let's discuss the project."]
 predicted_sequence = predict_speaker_sequence(model, tokenizer, conversation_test)
-print(predicted_sequence)  # Might output something like [1, 2, 1] depending on the training
-
-conversation_test = ["Hi this is your friend Niko.", "Are you going out with me or not?", "I don't know a friend called Nike.", "Alright bye."]
-predicted_sequence = predict_speaker_sequence(model, tokenizer, conversation_test)
-print(predicted_sequence)  # Might output something like [1, 2, 1] depending on the training
+print(predicted_sequence)

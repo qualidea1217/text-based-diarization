@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=pwu54_whisper
-#SBATCH --output=pwu54_whisper_out.txt
+#SBATCH --job-name=whisper
+#SBATCH --output=whisper_out.txt
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 

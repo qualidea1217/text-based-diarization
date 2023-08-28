@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=pwu54_pure_text
-#SBATCH --output=pwu54_pure_text_out.txt
+#SBATCH --job-name=pure_text
+#SBATCH --output=pure_text_out.txt
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 
