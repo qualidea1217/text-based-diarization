@@ -2,7 +2,8 @@ import json
 
 import torch
 from torch.utils.data import Dataset
-from transformers import T5Tokenizer, T5ForConditionalGeneration, TrainingArguments, Trainer
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+from transformers import TrainingArguments, Trainer
 
 
 def speaker_to_ints(input_list):
@@ -29,13 +30,13 @@ label_strs = [" ".join(map(str, label_seq)) for label_seq in labels]
 
 # 2. Custom Dataset
 class T5DiarizationDataset(Dataset):
-    def __init__(self, texts, label_strs, tokenizer, max_length=1024):
+    def __init__(self, texts, label_strs, tokenizer, max_length=16384):
         # Filter the data right here based on max_length
         filtered_texts = []
         filtered_labels = []
 
         for text, label in zip(texts, label_strs):
-            encoded_text = tokenizer.encode(f"classify: {text}", add_special_tokens=True)
+            encoded_text = tokenizer.encode(text, add_special_tokens=True)
             encoded_label = tokenizer.encode(label, add_special_tokens=True)
 
             if len(encoded_text) <= max_length and len(encoded_label) <= max_length:
@@ -56,7 +57,7 @@ class T5DiarizationDataset(Dataset):
         label_str = self.label_strs[idx]
 
         inputs = self.tokenizer.encode_plus(
-            f"classify: {text}",
+            text,
             add_special_tokens=True,
             max_length=self.max_length,
             pad_to_max_length=True,
@@ -81,9 +82,9 @@ class T5DiarizationDataset(Dataset):
 
 
 # Load tokenizer and model
-MAX_LENGTH = 1024
-tokenizer = T5Tokenizer.from_pretrained('t5-large', cache_dir="./tokenizers", model_max_length=MAX_LENGTH)
-model = T5ForConditionalGeneration.from_pretrained('t5-large', cache_dir="./models")
+MAX_LENGTH = 4096
+tokenizer = AutoTokenizer.from_pretrained('allenai/led-large-16384', cache_dir="./tokenizers", model_max_length=MAX_LENGTH)
+model = AutoModelForSeq2SeqLM.from_pretrained('allenai/led-large-16384', cache_dir="./models")
 
 # Create dataset and dataloader
 dataset = T5DiarizationDataset(texts, label_strs, tokenizer, MAX_LENGTH)
@@ -91,11 +92,11 @@ print(len(dataset))
 
 # 3. Define Training Arguments and Initialize Trainer
 training_args = TrainingArguments(
-    output_dir='./results/t5',
+    output_dir='./results/longformer',
     num_train_epochs=5,
     per_device_train_batch_size=4,
     optim="adafactor",
-    bf16=True
+    gradient_checkpointing=True,
 )
 
 trainer = Trainer(
@@ -110,7 +111,7 @@ trainer.train()
 
 # 5. Inference
 def predict_speaker_sequence(model, tokenizer, conversation):
-    input_text = "classify: " + " ".join(conversation)
+    input_text = " ".join(conversation)
     input_ids = tokenizer.encode(input_text, return_tensors="pt").to("cuda")
     output = model.generate(input_ids)
     decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
