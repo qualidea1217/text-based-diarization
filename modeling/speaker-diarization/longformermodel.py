@@ -51,17 +51,19 @@ def process_data_to_model_inputs(batch, encoder_max_length, decoder_max_length):
 
     return batch
 
+
 # Hyper parameters
 ENCODER_MAX_LENGTH = 8192
 DECODER_MAX_LENGTH = 8192
 BATCH_SIZE = 4
 EPOCHS = 5
 
-# Load tokenizer and model
-tokenizer = AutoTokenizer.from_pretrained('allenai/led-large-16384', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)
-model = AutoModelForSeq2SeqLM.from_pretrained('allenai/led-large-16384', cache_dir="./models", gradient_checkpointing=True)
+# 1. Load tokenizer and model
+tokenizer = AutoTokenizer.from_pretrained('allenai/led-large-16384', cache_dir="./tokenizers",
+                                          model_max_length=ENCODER_MAX_LENGTH)
+model = AutoModelForSeq2SeqLM.from_pretrained('allenai/led-large-16384', cache_dir="./models")
 
-# Data Preprocessing
+# 2. Data Preprocessing
 with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json", 'r') as json_in:
     data_dict = json.load(json_in)
     conversations = data_dict["text_list"]
@@ -69,10 +71,21 @@ with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_senten
 
 conversations = [" ".join(conv) for conv in conversations]
 speaker_labels = [" ".join(map(str, label_seq)) for label_seq in speaker_labels]
-custom_dataset = Dataset.from_dict({"conversations": conversations, "speaker_labels": speaker_labels})
 
-# Create dataset and dataloader
-dataset_train = custom_dataset.map(
+conversations_filtered = []
+speaker_labels_filtered = []
+for i in range(len(conversations)):
+    if len(tokenizer.encode(conversations[i])) <= ENCODER_MAX_LENGTH and len(
+            tokenizer.encode(speaker_labels[i])) <= DECODER_MAX_LENGTH:
+        conversations_filtered.append(conversations[i])
+        speaker_labels_filtered.append(speaker_labels[i])
+
+custom_dataset = Dataset.from_dict({"conversations": conversations_filtered, "speaker_labels": speaker_labels_filtered})
+custom_dataset = custom_dataset.train_test_split(test_size=0.2, shuffle=True, seed=42)
+
+# Create train/test dataset and dataloader
+dataset_train = custom_dataset["train"]
+dataset_train = dataset_train.map(
     process_data_to_model_inputs,
     batched=True,
     batch_size=BATCH_SIZE,
@@ -85,6 +98,20 @@ dataset_train.set_format(
 )
 print(len(dataset_train))
 
+dataset_test = custom_dataset["test"]
+dataset_test = dataset_test.map(
+    process_data_to_model_inputs,
+    batched=True,
+    batch_size=BATCH_SIZE,
+    remove_columns=["conversations", "speaker_labels"],
+)
+
+dataset_test.set_format(
+    type="torch",
+    columns=["input_ids", "attention_mask", "global_attention_mask", "labels"],
+)
+print(len(dataset_test))
+
 # 3. Define Training Arguments and Initialize Trainer
 training_args = TrainingArguments(
     output_dir='./results/longformer',
@@ -96,6 +123,7 @@ training_args = TrainingArguments(
 
 trainer = Trainer(
     model=model,
+    tokenizer=tokenizer,
     args=training_args,
     train_dataset=dataset_train
 )
@@ -107,16 +135,18 @@ trainer.train()
 # 5. Inference
 def predict_speaker_sequence(model, tokenizer, conversation):
     input_text = " ".join(conversation)
-    input_ids = tokenizer.encode(input_text, return_tensors="pt").to("cuda")
-    output = model.generate(input_ids)
-    decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
-    print(decoded_output)
-    return list(map(int, decoded_output.split()))
+    input_text_encoded = tokenizer(input_text, padding="max_length", truncation=True, max_length=ENCODER_MAX_LENGTH,
+                                   return_tensors="pt")
+    input_ids = input_text_encoded.input_ids.to("cuda")
+    attention_mask = input_text_encoded.attention_mask.to("cuda")
+    global_attention_mask = torch.zeros_like(attention_mask)
+    global_attention_mask[:, 0] = 1
+    output_ids = model.generate(input_ids, attention_mask=attention_mask, global_attention_mask=global_attention_mask)
+    decoded_output_ids = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+    print(decoded_output_ids)
+    return list(map(int, decoded_output_ids.split()))
 
 
 conversation_test = ["Hey, are you available?", "Yes, what's up?", "Let's discuss the project."]
 predicted_sequence = predict_speaker_sequence(model, tokenizer, conversation_test)
 print(predicted_sequence)
-
-
-
