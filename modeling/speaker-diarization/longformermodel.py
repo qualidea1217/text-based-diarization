@@ -16,19 +16,19 @@ def speaker_to_ints(input_list):
     return output_list
 
 
-def process_data_to_model_inputs(batch, encoder_max_length, decoder_max_length):
+def process_data_to_model_inputs(batch):
     # tokenize the inputs and labels
     inputs = tokenizer(
         batch["conversations"],
         padding="max_length",
         truncation=True,
-        max_length=encoder_max_length,
+        max_length=ENCODER_MAX_LENGTH,
     )
     outputs = tokenizer(
         batch["speaker_labels"],
         padding="max_length",
         truncation=True,
-        max_length=decoder_max_length,
+        max_length=DECODER_MAX_LENGTH,
     )
 
     batch["input_ids"] = inputs.input_ids
@@ -96,7 +96,6 @@ dataset_train.set_format(
     type="torch",
     columns=["input_ids", "attention_mask", "global_attention_mask", "labels"],
 )
-print(len(dataset_train))
 
 dataset_test = custom_dataset["test"]
 dataset_test = dataset_test.map(
@@ -110,7 +109,6 @@ dataset_test.set_format(
     type="torch",
     columns=["input_ids", "attention_mask", "global_attention_mask", "labels"],
 )
-print(len(dataset_test))
 
 # 3. Define Training Arguments and Initialize Trainer
 training_args = TrainingArguments(

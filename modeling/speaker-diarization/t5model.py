@@ -29,7 +29,7 @@ label_strs = [" ".join(map(str, label_seq)) for label_seq in labels]
 
 # 2. Custom Dataset
 class T5DiarizationDataset(Dataset):
-    def __init__(self, texts, label_strs, tokenizer, max_length=1024):
+    def __init__(self, texts, label_strs, tokenizer, max_length=512):
         # Filter the data right here based on max_length
         filtered_texts = []
         filtered_labels = []
@@ -81,7 +81,7 @@ class T5DiarizationDataset(Dataset):
 
 
 # Load tokenizer and model
-MAX_LENGTH = 1024
+MAX_LENGTH = 4096
 tokenizer = T5Tokenizer.from_pretrained('t5-large', cache_dir="./tokenizers", model_max_length=MAX_LENGTH)
 model = T5ForConditionalGeneration.from_pretrained('t5-large', cache_dir="./models")
 
@@ -95,7 +95,8 @@ training_args = TrainingArguments(
     num_train_epochs=5,
     per_device_train_batch_size=4,
     optim="adafactor",
-    bf16=True
+    bf16=True,
+    gradient_checkpointing=True
 )
 
 trainer = Trainer(
