@@ -1,7 +1,7 @@
 import json
 
 import torch
-from datasets import Dataset, load_dataset
+from datasets import Dataset
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from transformers import TrainingArguments, Trainer
 
@@ -53,15 +53,15 @@ def process_data_to_model_inputs(batch):
 
 
 # Hyper parameters
-ENCODER_MAX_LENGTH = 8192
-DECODER_MAX_LENGTH = 8192
+ENCODER_MAX_LENGTH = 4096
+DECODER_MAX_LENGTH = 4096
 BATCH_SIZE = 4
 EPOCHS = 5
 
 # 1. Load tokenizer and model
-tokenizer = AutoTokenizer.from_pretrained('allenai/led-large-16384', cache_dir="./tokenizers",
+tokenizer = AutoTokenizer.from_pretrained('allenai/led-base-16384', cache_dir="./tokenizers",
                                           model_max_length=ENCODER_MAX_LENGTH)
-model = AutoModelForSeq2SeqLM.from_pretrained('allenai/led-large-16384', cache_dir="./models")
+model = AutoModelForSeq2SeqLM.from_pretrained('allenai/led-base-16384', cache_dir="./models")
 
 # 2. Data Preprocessing
 with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json", 'r') as json_in:
@@ -116,14 +116,39 @@ training_args = TrainingArguments(
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
     optim="adafactor",
+    gradient_accumulation_steps=4,
     gradient_checkpointing=True,
+    save_strategy="epoch",
+    evaluation_strategy="epoch",
 )
+
+
+def compute_metrics(pred):
+    labels_ids = pred.label_ids
+    pred_ids = pred.predictions
+    pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
+    pred_list = [list(map(int, s.split())) for s in pred_str]
+    labels_ids[labels_ids == -100] = tokenizer.pad_token_id
+    label_str = tokenizer.batch_decode(labels_ids, skip_special_tokens=True)
+    label_list = [list(map(int, l.split())) for l in label_str]
+
+    acc_list = []
+    for i in range(len(pred_list)):
+        correct = 0
+        for j in range(min(len(pred_list[i]), len(label_list[i]))):
+            if pred_list[i][j] == label_list[i][j]:
+                correct += 1
+        acc_list.append(correct / len(label_list[i]))
+    return {"acc_list_mean": sum(acc_list) / len(acc_list)}
+
 
 trainer = Trainer(
     model=model,
     tokenizer=tokenizer,
     args=training_args,
-    train_dataset=dataset_train
+    train_dataset=dataset_train,
+    eval_dataset=dataset_test,
+    compute_metrics=compute_metrics
 )
 
 # 4. Train the Model
