@@ -18,32 +18,11 @@ tokenizer = BertTokenizer.from_pretrained('bert-large-cased', cache_dir="./token
 model = BertForSequenceClassification.from_pretrained('bert-large-cased', cache_dir="./models", num_labels=2)
 
 # Load raw data
-with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json", 'r') as json_in:
+with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_scd_512.json", 'r') as json_in:
     data_dict = json.load(json_in)
-    conversations = data_dict["text_list"]
-    speaker_labels = data_dict["speaker_list"]
+    texts = data_dict["text"]
+    labels = data_dict["label"]
 
-texts = []
-labels = []
-
-# Convert raw data to formatted data with length limitation
-for conversation, speaker_label in zip(conversations, speaker_labels):
-    for i in range(1, len(conversation)):
-        input_context = conversation[i - 1] + TARGET_SEPARATION + conversation[i]
-        if len(tokenizer.tokenize(input_context)) > MAX_LENGTH:
-            continue
-        for j in range(i - 2, -1, -1):
-            if j == i - 2:
-                input_context_temp = conversation[j] + HISTORY_LAST_SEPARATION + input_context
-            else:
-                input_context_temp = conversation[j] + HISTORY_SEPARATION + input_context
-            if len(tokenizer.tokenize(input_context_temp)) > MAX_LENGTH:
-                break
-            else:
-                input_context = input_context_temp
-        label = 1 if speaker_label[i - 1] == speaker_label[i] else 0
-        texts.append(input_context)
-        labels.append(label)
 
 # Create huggingface dataset
 custom_dataset = Dataset.from_dict({"text": texts, "label": labels})
