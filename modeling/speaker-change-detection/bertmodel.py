@@ -10,9 +10,6 @@ from transformers import BertTokenizer, BertForSequenceClassification, TrainingA
 MAX_LENGTH = 512
 BATCH_SIZE = 24
 EPOCHS = 5
-HISTORY_SEPARATION = " [SEP] "
-HISTORY_LAST_SEPARATION = " [SEP] "
-TARGET_SEPARATION = " [SEP] "
 
 # Load tokenizer and model
 tokenizer = BertTokenizer.from_pretrained('bert-large-cased', cache_dir="./tokenizers")
