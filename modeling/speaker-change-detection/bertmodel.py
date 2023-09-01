@@ -19,7 +19,7 @@ tokenizer = BertTokenizer.from_pretrained('bert-large-cased', cache_dir="./token
 model = BertForSequenceClassification.from_pretrained('bert-large-cased', cache_dir="./models", num_labels=2)
 
 # Load raw data
-with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_bert_scd_512.json", 'r') as json_in:
+with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_bert_scd_512_111.json", 'r') as json_in:
     data_dict = json.load(json_in)
     texts = data_dict["text"]
     labels = data_dict["label"]
