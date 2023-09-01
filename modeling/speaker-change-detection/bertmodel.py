@@ -1,4 +1,5 @@
 import json
+import random
 
 import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
@@ -7,7 +8,7 @@ from datasets import Dataset
 from transformers import BertTokenizer, BertForSequenceClassification, TrainingArguments, Trainer
 
 MAX_LENGTH = 512
-BATCH_SIZE = 16
+BATCH_SIZE = 24
 EPOCHS = 5
 HISTORY_SEPARATION = " [SEP] "
 HISTORY_LAST_SEPARATION = " [SEP] "
@@ -18,11 +19,14 @@ tokenizer = BertTokenizer.from_pretrained('bert-large-cased', cache_dir="./token
 model = BertForSequenceClassification.from_pretrained('bert-large-cased', cache_dir="./models", num_labels=2)
 
 # Load raw data
-with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_scd_512.json", 'r') as json_in:
+with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_bert_scd_512.json", 'r') as json_in:
     data_dict = json.load(json_in)
     texts = data_dict["text"]
     labels = data_dict["label"]
-
+    # randomly sample 20000 for verification
+    paired_data = list(zip(texts, labels))
+    random_data = random.sample(paired_data, 20000)
+    texts, labels = zip(*random_data)
 
 # Create huggingface dataset
 custom_dataset = Dataset.from_dict({"text": texts, "label": labels})
