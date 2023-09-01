@@ -5,8 +5,6 @@ from multiprocessing import Pool
 from transformers import BertTokenizer
 
 MAX_LENGTH = 512
-BATCH_SIZE = 16
-EPOCHS = 5
 HISTORY_SEPARATION = " [SEP] "
 HISTORY_LAST_SEPARATION = " [SEP] "
 TARGET_SEPARATION = " [SEP] "
@@ -28,14 +26,14 @@ def process_data():
     for conversation, speaker_label in zip(conversations, speaker_labels):
         for i in range(1, len(conversation)):
             input_context = conversation[i - 1] + TARGET_SEPARATION + conversation[i]
-            if len(tokenizer.tokenize(input_context)) > MAX_LENGTH:
+            if len(tokenizer.encode(input_context)) > MAX_LENGTH:
                 continue
             for j in range(i - 2, -1, -1):
                 if j == i - 2:
                     input_context_temp = conversation[j] + HISTORY_LAST_SEPARATION + input_context
                 else:
                     input_context_temp = conversation[j] + HISTORY_SEPARATION + input_context
-                if len(tokenizer.tokenize(input_context_temp)) > MAX_LENGTH:
+                if len(tokenizer.encode(input_context_temp)) > MAX_LENGTH:
                     break
                 else:
                     input_context = input_context_temp
@@ -55,14 +53,14 @@ def process_chunk(args):
     for conversation, speaker_label in zip(conversations_chunk, speaker_labels_chunk):
         for i in range(1, len(conversation)):
             input_context = conversation[i - 1] + TARGET_SEPARATION + conversation[i]
-            if len(tokenizer.tokenize(input_context)) > MAX_LENGTH:
+            if len(tokenizer.encode(input_context)) > MAX_LENGTH:
                 continue
             for j in range(i - 2, -1, -1):
                 if j == i - 2:
                     input_context_temp = conversation[j] + HISTORY_LAST_SEPARATION + input_context
                 else:
                     input_context_temp = conversation[j] + HISTORY_SEPARATION + input_context
-                if len(tokenizer.tokenize(input_context_temp)) > MAX_LENGTH:
+                if len(tokenizer.encode(input_context_temp)) > MAX_LENGTH:
                     break
                 else:
                     input_context = input_context_temp
@@ -78,13 +76,13 @@ def process_chunk(args):
 
 if __name__ == "__main__":
     # Load raw data
-    with open("interview_sentence.json", 'r') as json_in:
+    with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json", 'r') as json_in:
         data_dict = json.load(json_in)
         conversations = data_dict["text_list"]
         speaker_labels = data_dict["speaker_list"]
 
     # Split data into chunks for parallel processing
-    num_cores = 8
+    num_cores = 16
     chunk_size = len(conversations) // num_cores
 
     data_chunks = [(conversations[i:i + chunk_size], speaker_labels[i:i + chunk_size]) for i in
