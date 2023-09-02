@@ -6,7 +6,7 @@ from transformers import BertTokenizer
 
 MAX_LENGTH = 512
 HISTORY_SEPARATION = " "
-HISTORY_LAST_SEPARATION = " [SEP] "
+HISTORY_LAST_SEPARATION = " "
 TARGET_SEPARATION = " [SEP] "
 
 # Load tokenizer and model
@@ -98,5 +98,5 @@ if __name__ == "__main__":
         texts.extend(res[0])
         labels.extend(res[1])
 
-    with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_bert_scd_512_011.json", 'w') as json_out:
+    with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_bert_scd_512_001.json", 'w') as json_out:
         json.dump({"text": texts, "label": labels}, json_out, indent=4)

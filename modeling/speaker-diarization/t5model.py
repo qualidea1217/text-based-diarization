@@ -44,10 +44,10 @@ def process_data_to_model_inputs(batch):
 
 
 # Hyper parameters
-ENCODER_MAX_LENGTH = 2048
-DECODER_MAX_LENGTH = 2048
-BATCH_SIZE = 1
-EPOCHS = 10
+ENCODER_MAX_LENGTH = 1024
+DECODER_MAX_LENGTH = 1024
+BATCH_SIZE = 2
+EPOCHS = 5
 
 # Load tokenizer and model
 tokenizer = T5Tokenizer.from_pretrained('t5-3b', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)

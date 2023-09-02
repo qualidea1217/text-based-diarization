@@ -16,13 +16,14 @@ tokenizer = BertTokenizer.from_pretrained('bert-large-cased', cache_dir="./token
 model = BertForSequenceClassification.from_pretrained('bert-large-cased', cache_dir="./models", num_labels=2)
 
 # Load raw data
-with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_bert_scd_512_111.json", 'r') as json_in:
+with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_bert_scd_512_011.json", 'r') as json_in:
     data_dict = json.load(json_in)
     texts = data_dict["text"]
     labels = data_dict["label"]
     # randomly sample 20000 for verification
     paired_data = list(zip(texts, labels))
-    random_data = random.sample(paired_data, 20000)
+    random.seed(42)
+    random_data = random.sample(paired_data, 100000)
     texts, labels = zip(*random_data)
 
 # Create huggingface dataset
