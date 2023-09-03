@@ -46,7 +46,7 @@ def process_data_to_model_inputs(batch):
 # Hyper parameters
 ENCODER_MAX_LENGTH = 1024
 DECODER_MAX_LENGTH = 1024
-BATCH_SIZE = 2
+BATCH_SIZE = 1
 EPOCHS = 5
 
 # Load tokenizer and model
@@ -106,7 +106,6 @@ training_args = TrainingArguments(
     per_device_train_batch_size=BATCH_SIZE,
     optim="adafactor",
     gradient_accumulation_steps=4,
-    gradient_checkpointing=True,
     bf16=True,
     save_strategy="epoch",
     evaluation_strategy="epoch",

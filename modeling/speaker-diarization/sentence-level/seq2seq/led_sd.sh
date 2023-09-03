@@ -4,5 +4,5 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 
-cd /local/scratch/pwu54/python/text-based-diarization/modeling/speaker-diarization/
+cd /local/scratch/pwu54/python/text-based-diarization/modeling/speaker-diarization/sentence-level/seq2seq/
 python3 ledmodel.py
