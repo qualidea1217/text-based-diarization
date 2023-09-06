@@ -3,7 +3,7 @@ import json
 import torch
 from datasets import Dataset
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-from transformers import TrainingArguments, Trainer
+from transformers import Seq2SeqTrainingArguments, Seq2SeqTrainer
 
 
 def speaker_to_ints(input_list):
@@ -111,7 +111,7 @@ dataset_test.set_format(
 )
 
 # 3. Define Training Arguments and Initialize Trainer
-training_args = TrainingArguments(
+training_args = Seq2SeqTrainingArguments(
     output_dir='./results/longformer',
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
@@ -120,6 +120,7 @@ training_args = TrainingArguments(
     gradient_checkpointing=True,
     save_strategy="epoch",
     evaluation_strategy="epoch",
+    eval_accumulation_steps=1
 )
 
 
@@ -142,7 +143,7 @@ def compute_metrics(pred):
     return {"acc_list_mean": sum(acc_list) / len(acc_list)}
 
 
-trainer = Trainer(
+trainer = Seq2SeqTrainer(
     model=model,
     tokenizer=tokenizer,
     args=training_args,

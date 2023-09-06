@@ -1,7 +1,7 @@
 import json
 
 from datasets import Dataset
-from transformers import T5Tokenizer, T5ForConditionalGeneration, TrainingArguments, Trainer
+from transformers import T5Tokenizer, T5ForConditionalGeneration, Seq2SeqTrainer, Seq2SeqTrainingArguments
 
 
 def speaker_to_ints(input_list):
@@ -100,7 +100,7 @@ dataset_test.set_format(
 )
 
 # 3. Define Training Arguments and Initialize Trainer
-training_args = TrainingArguments(
+training_args = Seq2SeqTrainingArguments(
     output_dir='./results/t5-3b-1024',
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
@@ -111,6 +111,7 @@ training_args = TrainingArguments(
     bf16=True,
     save_strategy="epoch",
     evaluation_strategy="epoch",
+    eval_accumulation_steps=1
 )
 
 
@@ -133,7 +134,7 @@ def compute_metrics(pred):
     return {"acc_list_mean": sum(acc_list) / len(acc_list)}
 
 
-trainer = Trainer(
+trainer = Seq2SeqTrainer(
     model=model,
     tokenizer=tokenizer,
     args=training_args,
