@@ -5,25 +5,25 @@ import numpy as np
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 from datasets import Dataset
-from transformers import BertTokenizer, BertForSequenceClassification, TrainingArguments, Trainer
+from transformers import RobertaTokenizer, RobertaForSequenceClassification, TrainingArguments, Trainer
 
 MAX_LENGTH = 512
 BATCH_SIZE = 24
 EPOCHS = 5
 
 # Load tokenizer and model
-tokenizer = BertTokenizer.from_pretrained('bert-large-cased', cache_dir="./tokenizers")
-model = BertForSequenceClassification.from_pretrained('bert-large-cased', cache_dir="./models", num_labels=2)
+tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="./tokenizers")
+model = RobertaForSequenceClassification.from_pretrained('roberta-large', cache_dir="./models", num_labels=2)
 
 # Load raw data
-with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_bert_scd_512_001.json", 'r') as json_in:
+with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_roberta_scd_512_001.json", 'r') as json_in:
     data_dict = json.load(json_in)
     texts = data_dict["text"]
     labels = data_dict["label"]
     # randomly sample 20000 for verification
     paired_data = list(zip(texts, labels))
     random.seed(42)
-    random_data = random.sample(paired_data, 20000)
+    random_data = random.sample(paired_data, 200000)
     texts, labels = zip(*random_data)
 
 # Create huggingface dataset
@@ -42,9 +42,10 @@ dataset_test = dataset_test.map(preprocess_function, batched=True)
 
 # 3. Define Training Arguments and Initialize Trainer
 training_args = TrainingArguments(
-    output_dir='./results/bert-large-cased',
+    output_dir='./results/roberta-large-001',
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
+    per_device_eval_batch_size=BATCH_SIZE,
     learning_rate=1e-6,
     optim="adamw_torch",
     save_strategy="epoch",

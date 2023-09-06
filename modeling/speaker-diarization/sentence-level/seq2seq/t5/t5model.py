@@ -101,11 +101,13 @@ dataset_test.set_format(
 
 # 3. Define Training Arguments and Initialize Trainer
 training_args = TrainingArguments(
-    output_dir='./results/t5-3b-2048',
+    output_dir='./results/t5-3b-1024',
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
+    per_device_eval_batch_size=BATCH_SIZE,
     optim="adafactor",
     gradient_accumulation_steps=4,
+    gradient_checkpointing=True,
     bf16=True,
     save_strategy="epoch",
     evaluation_strategy="epoch",

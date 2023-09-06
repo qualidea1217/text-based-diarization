@@ -3,5 +3,5 @@
 #SBATCH --output=bert_data_generate.txt
 #SBATCH --cpus-per-task=32
 
-cd /local/scratch/pwu54/python/text-based-diarization/modeling/speaker-change-detection/sentence-level/sentence-classification/
+cd /local/scratch/pwu54/python/text-based-diarization/modeling/speaker-change-detection/sentence-level/sentence-classification/bert/
 python3 bert_data_generate.py
