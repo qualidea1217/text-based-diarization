@@ -2,7 +2,7 @@ import json
 
 import torch
 from datasets import Dataset
-from transformers import LEDTokenizer, LEDForConditionalGeneration, Seq2SeqTrainer, Seq2SeqTrainingArguments
+from transformers import LEDTokenizer, AutoModelForSeq2SeqLM, Seq2SeqTrainer, Seq2SeqTrainingArguments
 
 
 # Hyper parameters
@@ -15,7 +15,7 @@ EPOCHS = 5
 
 # Load tokenizer and model
 tokenizer = LEDTokenizer.from_pretrained('allenai/led-large-16384', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)
-model = LEDForConditionalGeneration.from_pretrained('allenai/led-large-16384', cache_dir="./models")
+model = AutoModelForSeq2SeqLM.from_pretrained('allenai/led-large-16384', cache_dir="./models")
 
 # Add special tokens (optional)
 # tokenizer.add_special_tokens({"additional_special_tokens": CHANGE_SPECIAL_TOKEN})
@@ -34,9 +34,9 @@ for i in range(len(conversations)):
     conversation = conversations[i][0]
     for j in range(1, len(conversations[i])):
         if speaker_labels[i][j] == speaker_labels[i][j - 1]:
-            conversation += " " + UNCHANGE_SPECIAL_TOKEN + " " + conversations[i][j]
+            conversation += UNCHANGE_SPECIAL_TOKEN + conversations[i][j]
         else:
-            conversation += CHANGE_SPECIAL_TOKEN + conversations[i][j]
+            conversation += " " + CHANGE_SPECIAL_TOKEN + " " + conversations[i][j]
     labels.append(conversation)
     texts.append(" ".join(conversations[i]))
 
