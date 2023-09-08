@@ -60,10 +60,7 @@ def preprocess_function(batch):
     batch["attention_mask"] = inputs.attention_mask
     batch["labels"] = outputs.input_ids
     # We have to make sure that the PAD token is ignored
-    batch["labels"] = [
-        [-100 if token == tokenizer.pad_token_id else token for token in labels]
-        for labels in batch["labels"]
-    ]
+    batch["labels"] = [[-100 if token == tokenizer.pad_token_id else token for token in labels]for labels in batch["labels"]]
     return batch
 
 
