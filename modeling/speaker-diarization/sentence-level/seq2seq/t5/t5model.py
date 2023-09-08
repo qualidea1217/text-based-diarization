@@ -111,7 +111,7 @@ training_args = Seq2SeqTrainingArguments(
     bf16=True,
     save_strategy="epoch",
     evaluation_strategy="epoch",
-    eval_accumulation_steps=1
+    eval_accumulation_steps=4
 )
 
 
