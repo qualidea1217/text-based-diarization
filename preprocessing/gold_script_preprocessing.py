@@ -267,6 +267,21 @@ def callfriend(root_dir: str):
             json.dump(transcript, json_out, indent=4)
 
 
+def get_gt_scd_data(input_dir: str):
+    text_list = []
+    speaker_list = []
+    for root, dirnames, filenames in os.walk(input_dir):
+        for filename in filenames:
+            if "transcript" in root and "LibriCSS" not in root and os.path.splitext(filename)[1] == ".json":
+                print(root, filename)
+                with open(os.path.join(root, filename), 'r') as json_in:
+                    content = json.load(json_in)
+                    text_list.append([utterance[1] for utterance in content])
+                    speaker_list.append([utterance[0] for utterance in content])
+    with open("dataset7_scd.json", 'w') as json_out:
+        json.dump({"text_list": text_list, "speaker_list": speaker_list}, json_out, indent=4)
+
+
 if __name__ == "__main__":
     # daily_talk("D:\\Text-based SD Dataset\\DailyTalk")
     # icsi("D:\\Text-based SD Dataset\\ICSI")
@@ -275,4 +290,5 @@ if __name__ == "__main__":
     # libricss("D:\\Text-based SD Dataset\\LibriCSS")
     # chime5("D:\\Text-based SD Dataset\\CHiME-5")
     # ami("D:\\Text-based SD Dataset\\AMI")
-    callfriend("D:\\Text-based SD Dataset\\CallFriend")
+    # callfriend("D:\\Text-based SD Dataset\\CallFriend")
+    get_gt_scd_data("/local/scratch/pwu54/Text-based SD Dataset/")
