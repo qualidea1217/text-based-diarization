@@ -70,8 +70,8 @@ dataset_test.set_format(type="torch", columns=["input_ids", "attention_mask", "l
 
 # Give output from test
 for i in range(len(dataset_test["input_ids"])):
-    output = model.generate(input_ids=dataset_test['input_ids'][i], attention_mask=dataset_test['attention_mask'][i], max_length=DECODER_MAX_LENGTH)
-    prediction = tokenizer.decode(output, skip_special_tokens=True)
+    output = model.generate(input_ids=dataset_test['input_ids'][i].unsqueeze(0), attention_mask=dataset_test['attention_mask'][i].unsqueeze(0), max_length=DECODER_MAX_LENGTH)
+    prediction = tokenizer.decode(output[0], skip_special_tokens=True)
     print(prediction)
 # outputs = model.generate(input_ids=dataset_test['input_ids'], attention_mask=dataset_test['attention_mask'], max_length=DECODER_MAX_LENGTH)
 # predictions = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
