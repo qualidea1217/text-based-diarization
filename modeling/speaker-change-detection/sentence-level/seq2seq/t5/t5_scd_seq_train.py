@@ -93,9 +93,3 @@ trainer = Seq2SeqTrainer(
 
 # Train the Model
 trainer.train()
-
-# Give output from test
-outputs = model.generate(input_ids=dataset_test['input_ids'], attention_mask=dataset_test['attention_mask'], max_length=DECODER_MAX_LENGTH)
-predictions = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
-for i in range(len(predictions)):
-    print(predictions[i])
