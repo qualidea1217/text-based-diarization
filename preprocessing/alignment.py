@@ -1,3 +1,4 @@
+import csv
 import json
 
 from align4d import align
@@ -11,4 +12,10 @@ with open("/local/scratch/pwu54/Text-based SD Dataset/AMI/transcript/EN2001a.jso
     reference = json.load(ref_in)
 
 aligned_result = align.align(hypothesis, reference)
-print(aligned_result)
+
+with open("EN2001a.csv", 'w') as csv_out:
+    writer = csv.writer(csv_out)
+    writer.writerow(aligned_result["hypothesis"])
+    for key, value in aligned_result["reference"].items():
+        print(key)
+        writer.writerow(value)
