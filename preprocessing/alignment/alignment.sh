@@ -3,5 +3,5 @@
 #SBATCH --output=alignment_out.txt
 #SBATCH --cpus-per-task=8
 
-cd /local/scratch/pwu54/python/text-based-diarization/preprocessing
+cd /local/scratch/pwu54/python/text-based-diarization/preprocessing/alignment/
 python3 alignment.py
