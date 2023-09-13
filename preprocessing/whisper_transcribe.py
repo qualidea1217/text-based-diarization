@@ -54,7 +54,7 @@ def is_repeating(input_str: str, min_length: int, min_repeat: int) -> bool:
     :param min_repeat: Minimum repeating times of the repeating substring.
     :return: boolean.
     """
-    max_length = len(input_str) // min_length
+    max_length = len(input_str) // min_repeat
     for length in range(max_length, min_length - 1, -1):
         for start in range(len(input_str) - length * min_repeat + 1):
             substring = input_str[start:start + length]
