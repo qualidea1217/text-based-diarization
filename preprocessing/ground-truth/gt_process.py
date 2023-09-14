@@ -368,4 +368,4 @@ if __name__ == "__main__":
     # chime5("D:\\Text-based SD Dataset\\CHiME-5")
     # ami("D:\\Text-based SD Dataset\\AMI")
     # callfriend("D:\\Text-based SD Dataset\\CallFriend")
-    get_gt_scd_data("/local/scratch/pwu54/Text-based SD Dataset/", 6)
+    get_gt_scd_data("/local/scratch/pwu54/Text-based SD Dataset/", 20)
