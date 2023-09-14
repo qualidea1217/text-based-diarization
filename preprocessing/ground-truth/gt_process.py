@@ -323,7 +323,7 @@ def interview(csv_dir: str, segmentation: None | str = None):
         json.dump(dict_out, json_out, indent=4)
 
 
-def get_gt_scd_data(input_dir: str):
+def get_gt_scd_data(input_dir: str, min_merge_length: int | None):
     text_list = []
     speaker_list = []
     for root, dirnames, filenames in os.walk(input_dir):
@@ -334,6 +334,27 @@ def get_gt_scd_data(input_dir: str):
                     content = json.load(json_in)
                     text_list.append([utterance[1] for utterance in content])
                     speaker_list.append([utterance[0] for utterance in content])
+    if min_merge_length:
+        for i in range(len(text_list)):
+            merged_texts = []
+            merged_speakers = []
+            j = 0
+            while j < len(text_list[i]):
+                if ((j < len(text_list[i]) - 1) and (speaker_list[i][j] == speaker_list[i][j + 1]) and (len(text_list[i][j].split()) < min_merge_length or len(text_list[i][j + 1].split()) < min_merge_length)):
+                    merged_sentence = text_list[i][j]
+                    while ((j < len(text_list[i]) - 1) and (speaker_list[i][j] == speaker_list[i][j + 1]) and (len(merged_sentence.split()) < min_merge_length or len(text_list[i][j + 1].split()) < min_merge_length)):
+                        j += 1
+                        merged_sentence += " " + text_list[i][j]
+                    merged_texts.append(merged_sentence)
+                    merged_speakers.append(speaker_list[i][j])
+                    j += 1
+                else:
+                    merged_texts.append(text_list[i][j])
+                    merged_speakers.append(speaker_list[i][j])
+                    j += 1
+            text_list[i] = merged_texts
+            speaker_list[i] = merged_speakers
+
     with open("dataset7_scd.json", 'w') as json_out:
         json.dump({"text_list": text_list, "speaker_list": speaker_list}, json_out, indent=4)
 
@@ -347,4 +368,4 @@ if __name__ == "__main__":
     # chime5("D:\\Text-based SD Dataset\\CHiME-5")
     # ami("D:\\Text-based SD Dataset\\AMI")
     # callfriend("D:\\Text-based SD Dataset\\CallFriend")
-    get_gt_scd_data("/local/scratch/pwu54/Text-based SD Dataset/")
+    get_gt_scd_data("/local/scratch/pwu54/Text-based SD Dataset/", 6)

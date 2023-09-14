@@ -16,7 +16,7 @@ tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="./token
 model = RobertaForSequenceClassification.from_pretrained('roberta-large', cache_dir="./models", num_labels=2)
 
 # Load raw data
-with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_roberta_scd_512_001.json", 'r') as json_in:
+with open("/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_001.json", 'r') as json_in:
     data_dict = json.load(json_in)
     texts = data_dict["text"]
     labels = data_dict["label"]
