@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=led_scd
-#SBATCH --output=led_scd_out.txt
+#SBATCH --job-name=led_scd_seq_train
+#SBATCH --output=led_scd_seq_train_out.txt
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 

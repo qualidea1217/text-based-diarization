@@ -39,13 +39,10 @@ def form_utterance(align_result: dict, remove_empty_utterance: bool = True) -> t
 
 
 def align_whisper_to_gt(whisper_output_file: str, gt_file: str):
-    # Load hypothesis
     with open(whisper_output_file, 'r') as hypo_in:
         hypothesis = hypo_in.read()
-    # Load reference
     with open(gt_file, 'r') as ref_in:
         reference = json.load(ref_in)
-    # Alignment
     align_result = align.align(hypothesis, reference)
     return align_result
 
