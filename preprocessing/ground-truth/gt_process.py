@@ -323,7 +323,7 @@ def interview(csv_dir: str, segmentation: None | str = None):
         json.dump(dict_out, json_out, indent=4)
 
 
-def get_gt_scd_data(input_dir: str, min_merge_length: int | None):
+def get_gt_scd_data(input_dir: str, min_merge_length: int | None = None):
     text_list = []
     speaker_list = []
     for root, dirnames, filenames in os.walk(input_dir):
@@ -368,4 +368,4 @@ if __name__ == "__main__":
     # chime5("D:\\Text-based SD Dataset\\CHiME-5")
     # ami("D:\\Text-based SD Dataset\\AMI")
     # callfriend("D:\\Text-based SD Dataset\\CallFriend")
-    get_gt_scd_data("/local/scratch/pwu54/Text-based SD Dataset/", 20)
+    get_gt_scd_data("/local/scratch/pwu54/Text-based SD Dataset/")

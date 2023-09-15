@@ -21,10 +21,10 @@ with open("/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_0
     texts = data_dict["text"]
     labels = data_dict["label"]
     # randomly sample 20000 for verification
-    paired_data = list(zip(texts, labels))
-    random.seed(42)
-    random_data = random.sample(paired_data, 200000)
-    texts, labels = zip(*random_data)
+    # paired_data = list(zip(texts, labels))
+    # random.seed(42)
+    # random_data = random.sample(paired_data, 200000)
+    # texts, labels = zip(*random_data)
 
 # Create huggingface dataset
 custom_dataset = Dataset.from_dict({"text": texts, "label": labels})

@@ -33,7 +33,7 @@ def process_chunk(args):
                     break
                 else:
                     input_context = input_context_temp
-            label = 1 if speaker_label[i - 1] == speaker_label[i] else 0
+            label = 0 if speaker_label[i - 1] == speaker_label[i] else 1
             texts.append(input_context)
             labels.append(label)
         finished += 1
