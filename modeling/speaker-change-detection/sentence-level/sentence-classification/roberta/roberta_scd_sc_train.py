@@ -26,20 +26,6 @@ with open("/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_0
     # random_data = random.sample(paired_data, 200000)
     # texts, labels = zip(*random_data)
 
-# Down sample label 1 to make dataset balance
-texts_label1 = [texts[i] for i in range(len(texts)) if labels[i] == 1]
-texts_label0 = [texts[i] for i in range(len(texts)) if labels[i] == 0]
-labels_label1 = [1] * len(texts_label1)
-labels_label0 = [0] * len(texts_label0)
-random.seed(42)
-texts_label1_downsampled = random.sample(texts_label1, len(texts_label0))
-labels_label1_downsampled = [1] * len(texts_label0)
-new_texts = texts_label1_downsampled + texts_label0
-new_labels = labels_label1_downsampled + labels_label0
-combined = list(zip(new_texts, new_labels))
-random.shuffle(combined)
-texts, labels = zip(*combined)
-
 # Create huggingface dataset
 custom_dataset = Dataset.from_dict({"text": texts, "label": labels})
 custom_dataset = custom_dataset.train_test_split(test_size=0.2, shuffle=True, seed=42)

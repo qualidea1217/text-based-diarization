@@ -193,31 +193,30 @@ if __name__ == "__main__":
     # retry_with_silence_removal(dir_dict["DailyTalk audio"], dir_dict["DailyTalk text"], 5, 5, 4)
     # retry_with_silence_removal(dir_dict["ICSI audio"], dir_dict["ICSI text"], 5, 5, 4)
     # retry_with_silence_removal(dir_dict["SBCSAE audio"], dir_dict["SBCSAE text"], 5, 5, 4)
+    with open("txt_retry_ami.json", 'r') as json_in:
+        txt_retry_dict = json.load(json_in)
+        retranscribe_with_silence_removal(dir_dict["AMI audio"], txt_retry_dict, silence_thresh=-45.0)
 
-    txt_retry_dict = get_txt_retry_dict("D:\\Text-based SD Dataset\\AMI\\transcript", 5, 5, 8)
-    with open("txt_retry_ami.json", 'w') as ami_out:
-        json.dump(txt_retry_dict, ami_out, indent=4)
+    with open("txt_retry_callfriend.json", 'r') as json_in:
+        txt_retry_dict = json.load(json_in)
+        retranscribe_with_silence_removal(dir_dict["CallFriend audio"], txt_retry_dict, silence_thresh=-45.0)
 
-    txt_retry_dict = get_txt_retry_dict("D:\\Text-based SD Dataset\\CallFriend\\transcript", 5, 5, 8)
-    with open("txt_retry_callfriend.json", 'w') as ami_out:
-        json.dump(txt_retry_dict, ami_out, indent=4)
+    with open("txt_retry_callhome-english.json", 'r') as json_in:
+        txt_retry_dict = json.load(json_in)
+        retranscribe_with_silence_removal(dir_dict["CallHome English audio"], txt_retry_dict, silence_thresh=-45.0)
 
-    txt_retry_dict = get_txt_retry_dict("D:\\Text-based SD Dataset\\CallHome English\\transcript", 5, 5, 8)
-    with open("txt_retry_callhome-english.json", 'w') as ami_out:
-        json.dump(txt_retry_dict, ami_out, indent=4)
+    with open("txt_retry_chime5.json", 'r') as json_in:
+        txt_retry_dict = json.load(json_in)
+        retranscribe_with_silence_removal(dir_dict["CHiME-5 audio1"], txt_retry_dict, silence_thresh=-45.0)
 
-    txt_retry_dict = get_txt_retry_dict("D:\\Text-based SD Dataset\\DailyTalk\\transcript", 5, 5, 8)
-    with open("txt_retry_dailytalk.json", 'w') as ami_out:
-        json.dump(txt_retry_dict, ami_out, indent=4)
+    with open("txt_retry_dailytalk.json", 'r') as json_in:
+        txt_retry_dict = json.load(json_in)
+        retranscribe_with_silence_removal(dir_dict["DailyTalk audio"], txt_retry_dict, silence_thresh=-45.0)
 
-    txt_retry_dict = get_txt_retry_dict("D:\\Text-based SD Dataset\\ICSI\\transcript", 5, 5, 8)
-    with open("txt_retry_icsi.json", 'w') as ami_out:
-        json.dump(txt_retry_dict, ami_out, indent=4)
+    with open("txt_retry_icsi.json", 'r') as json_in:
+        txt_retry_dict = json.load(json_in)
+        retranscribe_with_silence_removal(dir_dict["ICSI audio"], txt_retry_dict, silence_thresh=-45.0)
 
-    txt_retry_dict = get_txt_retry_dict("D:\\Text-based SD Dataset\\SBCSAE\\transcript", 5, 5, 8)
-    with open("txt_retry_sbcsae.json", 'w') as ami_out:
-        json.dump(txt_retry_dict, ami_out, indent=4)
-
-    txt_retry_dict = get_txt_retry_dict("D:\\Text-based SD Dataset\\CHiME-5\\transcript", 5, 5, 8)
-    with open("txt_retry_chime5.json", 'w') as ami_out:
-        json.dump(txt_retry_dict, ami_out, indent=4)
+    with open("txt_retry_sbcsae.json", 'r') as json_in:
+        txt_retry_dict = json.load(json_in)
+        retranscribe_with_silence_removal(dir_dict["SBCSAE audio"], txt_retry_dict, silence_thresh=-45.0)
