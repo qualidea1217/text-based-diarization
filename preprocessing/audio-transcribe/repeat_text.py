@@ -38,6 +38,7 @@ def is_repeating(input_str: str, min_length: int, min_repeat: int) -> bool:
             substring = input_str[start:start + length]
             pattern = substring * min_repeat
             if pattern in input_str:
+                print(pattern)
                 return True
     return False
 

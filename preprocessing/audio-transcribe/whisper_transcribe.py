@@ -32,14 +32,14 @@ def transcribe(audio_dir: str, text_output_dir: str):
     :param text_output_dir: Parent directory of all text output files.
     :return: None.
     """
-    model = whisper.load_model("large")
+    model = whisper.load_model("medium.en")
     for root, dirnames, filenames in os.walk(audio_dir):
         for filename in filenames:
             basename, ext = os.path.splitext(filename)
             if ext == ".wav":
                 with open(os.path.join(text_output_dir, basename + ".txt"), 'w', encoding="utf-8",
                           errors="ignore") as output_file:
-                    result = model.transcribe(os.path.join(root, filename))
+                    result = model.transcribe(os.path.join(root, filename), language="en", fp16=False, beam_size=5, )
                     output_file.write(result["text"])
 
 
@@ -75,13 +75,13 @@ def is_repeating_file_parallel(args: tuple) -> tuple | None:
 
 
 def retranscribe(audio_dir: str, txt_retry_dict: dict):
-    model = whisper.load_model("large")
+    model = whisper.load_model("medium.en")
     for wav_root, wav_dirnames, wav_filenames in os.walk(audio_dir):
         for wav_filename in wav_filenames:
             wav_basename = os.path.splitext(wav_filename)[0]
             if wav_basename in txt_retry_dict:  # check if key exists
                 with open(txt_retry_dict[wav_basename], 'w', encoding="utf-8", errors="ignore") as new_txt:
-                    retry_result = model.transcribe(os.path.join(wav_root, wav_filename))
+                    retry_result = model.transcribe(os.path.join(wav_root, wav_filename), language="en", fp16=False)
                     new_txt.write(retry_result["text"])
                 print(f"Retry: {wav_basename}")
 
@@ -163,7 +163,7 @@ def remove_silence_from_audio(file_path, output_file_path, silence_thresh=-50.0,
 
 
 def retranscribe_with_silence_removal(audio_dir: str, txt_retry_dict: dict, silence_thresh=-50.0, min_silence_len: int=1000, keep_silence: int=100):
-    model = whisper.load_model("large")
+    model = whisper.load_model("medium.en")
     for wav_root, wav_dirnames, wav_filenames in os.walk(audio_dir):
         for wav_filename in wav_filenames:
             wav_basename, wav_ext = os.path.splitext(wav_filename)
@@ -172,7 +172,7 @@ def retranscribe_with_silence_removal(audio_dir: str, txt_retry_dict: dict, sile
                     wav_filepath = os.path.join(wav_root, wav_filename)
                     wav_filepath_no_silence = os.path.join(wav_root, wav_basename + "_no_silence" + wav_ext)
                     remove_silence_from_audio(wav_filepath, wav_filepath_no_silence, silence_thresh, min_silence_len, keep_silence)
-                    retry_result = model.transcribe(wav_filepath_no_silence)
+                    retry_result = model.transcribe(wav_filepath_no_silence, language="en", fp16=False)
                     new_txt.write(retry_result["text"])
                     os.remove(wav_filepath_no_silence)  # remove no silence audio
                 print(f"Retry: {wav_basename}")
@@ -193,30 +193,37 @@ if __name__ == "__main__":
     # retry_with_silence_removal(dir_dict["DailyTalk audio"], dir_dict["DailyTalk text"], 5, 5, 4)
     # retry_with_silence_removal(dir_dict["ICSI audio"], dir_dict["ICSI text"], 5, 5, 4)
     # retry_with_silence_removal(dir_dict["SBCSAE audio"], dir_dict["SBCSAE text"], 5, 5, 4)
-    with open("txt_retry_ami.json", 'r') as json_in:
-        txt_retry_dict = json.load(json_in)
-        retranscribe_with_silence_removal(dir_dict["AMI audio"], txt_retry_dict, silence_thresh=-45.0)
-
-    with open("txt_retry_callfriend.json", 'r') as json_in:
-        txt_retry_dict = json.load(json_in)
-        retranscribe_with_silence_removal(dir_dict["CallFriend audio"], txt_retry_dict, silence_thresh=-45.0)
-
-    with open("txt_retry_callhome-english.json", 'r') as json_in:
-        txt_retry_dict = json.load(json_in)
-        retranscribe_with_silence_removal(dir_dict["CallHome English audio"], txt_retry_dict, silence_thresh=-45.0)
-
-    with open("txt_retry_chime5.json", 'r') as json_in:
-        txt_retry_dict = json.load(json_in)
-        retranscribe_with_silence_removal(dir_dict["CHiME-5 audio1"], txt_retry_dict, silence_thresh=-45.0)
-
-    with open("txt_retry_dailytalk.json", 'r') as json_in:
-        txt_retry_dict = json.load(json_in)
-        retranscribe_with_silence_removal(dir_dict["DailyTalk audio"], txt_retry_dict, silence_thresh=-45.0)
-
-    with open("txt_retry_icsi.json", 'r') as json_in:
-        txt_retry_dict = json.load(json_in)
-        retranscribe_with_silence_removal(dir_dict["ICSI audio"], txt_retry_dict, silence_thresh=-45.0)
-
-    with open("txt_retry_sbcsae.json", 'r') as json_in:
-        txt_retry_dict = json.load(json_in)
-        retranscribe_with_silence_removal(dir_dict["SBCSAE audio"], txt_retry_dict, silence_thresh=-45.0)
+    # with open("txt_retry_ami.json", 'r') as json_in:
+    #     txt_retry_dict = json.load(json_in)
+    #     retranscribe_with_silence_removal(dir_dict["AMI audio"], txt_retry_dict, silence_thresh=-45.0)
+    #
+    # with open("txt_retry_callfriend.json", 'r') as json_in:
+    #     txt_retry_dict = json.load(json_in)
+    #     retranscribe_with_silence_removal(dir_dict["CallFriend audio"], txt_retry_dict, silence_thresh=-45.0)
+    #
+    # with open("txt_retry_callhome-english.json", 'r') as json_in:
+    #     txt_retry_dict = json.load(json_in)
+    #     retranscribe_with_silence_removal(dir_dict["CallHome English audio"], txt_retry_dict, silence_thresh=-45.0)
+    #
+    # with open("txt_retry_chime5.json", 'r') as json_in:
+    #     txt_retry_dict = json.load(json_in)
+    #     retranscribe_with_silence_removal(dir_dict["CHiME-5 audio1"], txt_retry_dict, silence_thresh=-45.0)
+    #
+    # with open("txt_retry_dailytalk.json", 'r') as json_in:
+    #     txt_retry_dict = json.load(json_in)
+    #     retranscribe_with_silence_removal(dir_dict["DailyTalk audio"], txt_retry_dict, silence_thresh=-45.0)
+    #
+    # with open("txt_retry_icsi.json", 'r') as json_in:
+    #     txt_retry_dict = json.load(json_in)
+    #     retranscribe_with_silence_removal(dir_dict["ICSI audio"], txt_retry_dict, silence_thresh=-45.0)
+    #
+    # with open("txt_retry_sbcsae.json", 'r') as json_in:
+    #     txt_retry_dict = json.load(json_in)
+    #     retranscribe_with_silence_removal(dir_dict["SBCSAE audio"], txt_retry_dict, silence_thresh=-45.0)
+    # transcribe(dir_dict["AMI audio"], dir_dict["AMI text"])
+    # transcribe(dir_dict["CallFriend audio"], dir_dict["CallFriend text"])
+    # transcribe(dir_dict["CallHome English audio"], dir_dict["CallHome English text"])  # running
+    transcribe(dir_dict["CHiME-5 audio1"], dir_dict["CHiME-5 text1"])  # running
+    # transcribe(dir_dict["DailyTalk audio"], dir_dict["DailyTalk text"])
+    # transcribe(dir_dict["ICSI audio"], dir_dict["ICSI text"])  # running
+    # transcribe(dir_dict["SBCSAE audio"], dir_dict["SBCSAE text"])  # running
