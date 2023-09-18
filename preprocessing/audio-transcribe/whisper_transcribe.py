@@ -8,20 +8,25 @@ from pydub import AudioSegment
 from pydub.silence import split_on_silence
 
 dir_dict = {"AMI audio": "/local/scratch/pwu54/Text-based SD Dataset/AMI/audio/",
+            "AMI gt": "/local/scratch/pwu54/Text-based SD Dataset/AMI/transcript/",
             "AMI text": "/local/scratch/pwu54/Text-based SD Dataset/AMI/whisper_output/",
             "CallFriend audio": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/audio/",
+            "CallFriend gt": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/transcript/",
             "CallFriend text": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/whisper_output/",
             "CallHome English audio": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/CallHome/",
+            "CallHome English gt": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/transcript/",
             "CallHome English text": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/whisper_output/",
-            "CHiME-5 audio1": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/audio/",
-            "CHiME-5 text1": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/whisper_output/",
-            "CHiME-5 audio2": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/audio2/",
-            "CHiME-5 text2": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/whisper_output2/",
+            "CHiME-5 audio": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/audio/",
+            "CHiME-5 gt": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/transcript/",
+            "CHiME-5 text": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/whisper_output/",
             "DailyTalk audio": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/audio/",
+            "DailyTalk gt": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/transcript/",
             "DailyTalk text": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/whisper_output/",
             "ICSI audio": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/Signals/",
+            "ICSI gt": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/transcript/",
             "ICSI text": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/whisper_output/",
             "SBCSAE audio": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/",
+            "SBCSAE gt": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/transcript/",
             "SBCSAE text": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/whisper_output/"}
 
 
@@ -185,14 +190,6 @@ def retry_with_silence_removal(audio_dir: str, text_output_dir: str, min_length:
 
 
 if __name__ == "__main__":
-    # retry_with_silence_removal(dir_dict["AMI audio"], dir_dict["AMI text"], 5, 5, 4)
-    # retry_with_silence_removal(dir_dict["CallFriend audio"], dir_dict["CallFriend text"], 5, 5, 4)
-    # retry_with_silence_removal(dir_dict["CallHome English audio"], dir_dict["CallHome English text"], 5, 5, 4)
-    # retry_with_silence_removal(dir_dict["CHiME-5 audio1"], dir_dict["CHiME-5 text1"], 5, 5, 4, silence_thresh=-45.0)  # running
-    # retry_with_silence_removal(dir_dict["CHiME-5 audio2"], dir_dict["CHiME-5 text2"], 5, 5, 4)
-    # retry_with_silence_removal(dir_dict["DailyTalk audio"], dir_dict["DailyTalk text"], 5, 5, 4)
-    # retry_with_silence_removal(dir_dict["ICSI audio"], dir_dict["ICSI text"], 5, 5, 4)
-    # retry_with_silence_removal(dir_dict["SBCSAE audio"], dir_dict["SBCSAE text"], 5, 5, 4)
     # with open("txt_retry_ami.json", 'r') as json_in:
     #     txt_retry_dict = json.load(json_in)
     #     retranscribe_with_silence_removal(dir_dict["AMI audio"], txt_retry_dict, silence_thresh=-45.0)
@@ -207,7 +204,7 @@ if __name__ == "__main__":
     #
     # with open("txt_retry_chime5.json", 'r') as json_in:
     #     txt_retry_dict = json.load(json_in)
-    #     retranscribe_with_silence_removal(dir_dict["CHiME-5 audio1"], txt_retry_dict, silence_thresh=-45.0)
+    #     retranscribe_with_silence_removal(dir_dict["CHiME-5 audio"], txt_retry_dict, silence_thresh=-45.0)
     #
     # with open("txt_retry_dailytalk.json", 'r') as json_in:
     #     txt_retry_dict = json.load(json_in)
@@ -223,7 +220,7 @@ if __name__ == "__main__":
     # transcribe(dir_dict["AMI audio"], dir_dict["AMI text"])
     # transcribe(dir_dict["CallFriend audio"], dir_dict["CallFriend text"])
     # transcribe(dir_dict["CallHome English audio"], dir_dict["CallHome English text"])  # running
-    transcribe(dir_dict["CHiME-5 audio1"], dir_dict["CHiME-5 text1"])  # running
+    transcribe(dir_dict["CHiME-5 audio"], dir_dict["CHiME-5 text"])  # running
     # transcribe(dir_dict["DailyTalk audio"], dir_dict["DailyTalk text"])
     # transcribe(dir_dict["ICSI audio"], dir_dict["ICSI text"])  # running
     # transcribe(dir_dict["SBCSAE audio"], dir_dict["SBCSAE text"])  # running

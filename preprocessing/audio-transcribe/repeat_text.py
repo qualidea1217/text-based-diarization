@@ -6,20 +6,25 @@ from multiprocessing import Pool
 from numba import njit
 
 dir_dict = {"AMI audio": "/local/scratch/pwu54/Text-based SD Dataset/AMI/audio/",
+            "AMI gt": "/local/scratch/pwu54/Text-based SD Dataset/AMI/transcript/",
             "AMI text": "/local/scratch/pwu54/Text-based SD Dataset/AMI/whisper_output/",
             "CallFriend audio": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/audio/",
+            "CallFriend gt": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/transcript/",
             "CallFriend text": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/whisper_output/",
             "CallHome English audio": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/CallHome/",
+            "CallHome English gt": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/transcript/",
             "CallHome English text": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/whisper_output/",
-            "CHiME-5 audio1": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/audio/",
-            "CHiME-5 text1": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/whisper_output/",
-            "CHiME-5 audio2": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/audio2/",
-            "CHiME-5 text2": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/whisper_output2/",
+            "CHiME-5 audio": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/audio/",
+            "CHiME-5 gt": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/transcript/",
+            "CHiME-5 text": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/whisper_output/",
             "DailyTalk audio": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/audio/",
+            "DailyTalk gt": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/transcript/",
             "DailyTalk text": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/whisper_output/",
             "ICSI audio": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/Signals/",
+            "ICSI gt": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/transcript/",
             "ICSI text": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/whisper_output/",
             "SBCSAE audio": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/",
+            "SBCSAE gt": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/transcript/",
             "SBCSAE text": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/whisper_output/"}
 
 
@@ -112,6 +117,6 @@ if __name__ == "__main__":
     with open("txt_retry_sbcsae.json", 'w') as ami_out:
         json.dump(txt_retry_dict, ami_out, indent=4)
 
-    txt_retry_dict = get_txt_retry_dict(dir_dict["CHiME-5 text1"], 5, 5, 32)
+    txt_retry_dict = get_txt_retry_dict(dir_dict["CHiME-5 text"], 5, 5, 32)
     with open("txt_retry_chime5.json", 'w') as ami_out:
         json.dump(txt_retry_dict, ami_out, indent=4)
