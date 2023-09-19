@@ -93,30 +93,30 @@ def get_txt_retry_dict(text_output_dir: str, min_length: int, min_repeat: int, n
 
 
 if __name__ == "__main__":
-    txt_retry_dict = get_txt_retry_dict(dir_dict["AMI text"], 5, 5, 32)
+    txt_retry_dict = get_txt_retry_dict(dir_dict["AMI text"], 5, 5, 40)
     with open("txt_retry_ami.json", 'w') as ami_out:
         json.dump(txt_retry_dict, ami_out, indent=4)
 
-    txt_retry_dict = get_txt_retry_dict(dir_dict["CallFriend text"], 5, 5, 32)
+    txt_retry_dict = get_txt_retry_dict(dir_dict["CallFriend text"], 5, 5, 40)
     with open("txt_retry_callfriend.json", 'w') as ami_out:
         json.dump(txt_retry_dict, ami_out, indent=4)
 
-    txt_retry_dict = get_txt_retry_dict(dir_dict["CallHome English text"], 5, 5, 32)
+    txt_retry_dict = get_txt_retry_dict(dir_dict["CallHome English text"], 5, 5, 40)
     with open("txt_retry_callhome-english.json", 'w') as ami_out:
         json.dump(txt_retry_dict, ami_out, indent=4)
 
-    txt_retry_dict = get_txt_retry_dict(dir_dict["DailyTalk text"], 5, 5, 32)
+    txt_retry_dict = get_txt_retry_dict(dir_dict["DailyTalk text"], 5, 5, 40)
     with open("txt_retry_dailytalk.json", 'w') as ami_out:
         json.dump(txt_retry_dict, ami_out, indent=4)
 
-    txt_retry_dict = get_txt_retry_dict(dir_dict["ICSI text"], 5, 5, 32)
+    txt_retry_dict = get_txt_retry_dict(dir_dict["ICSI text"], 5, 5, 40)
     with open("txt_retry_icsi.json", 'w') as ami_out:
         json.dump(txt_retry_dict, ami_out, indent=4)
 
-    txt_retry_dict = get_txt_retry_dict(dir_dict["SBCSAE text"], 5, 5, 32)
+    txt_retry_dict = get_txt_retry_dict(dir_dict["SBCSAE text"], 5, 5, 40)
     with open("txt_retry_sbcsae.json", 'w') as ami_out:
         json.dump(txt_retry_dict, ami_out, indent=4)
 
-    txt_retry_dict = get_txt_retry_dict(dir_dict["CHiME-5 text"], 5, 5, 32)
+    txt_retry_dict = get_txt_retry_dict(dir_dict["CHiME-5 text"], 5, 5, 40)
     with open("txt_retry_chime5.json", 'w') as ami_out:
         json.dump(txt_retry_dict, ami_out, indent=4)
