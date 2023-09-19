@@ -13,7 +13,7 @@ dir_dict = {"AMI audio": "/local/scratch/pwu54/Text-based SD Dataset/AMI/audio/"
             "CallFriend audio": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/audio/",
             "CallFriend gt": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/transcript/",
             "CallFriend text": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/whisper_output/",
-            "CallHome English audio": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/CallHome/",
+            "CallHome English audio": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/audio/",
             "CallHome English gt": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/transcript/",
             "CallHome English text": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/whisper_output/",
             "CHiME-5 audio": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/audio/",
@@ -22,10 +22,10 @@ dir_dict = {"AMI audio": "/local/scratch/pwu54/Text-based SD Dataset/AMI/audio/"
             "DailyTalk audio": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/audio/",
             "DailyTalk gt": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/transcript/",
             "DailyTalk text": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/whisper_output/",
-            "ICSI audio": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/Signals/",
+            "ICSI audio": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/audio/",
             "ICSI gt": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/transcript/",
             "ICSI text": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/whisper_output/",
-            "SBCSAE audio": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/",
+            "SBCSAE audio": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/audio/",
             "SBCSAE gt": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/transcript/",
             "SBCSAE text": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/whisper_output/"}
 
@@ -44,7 +44,7 @@ def transcribe(audio_dir: str, text_output_dir: str):
             if ext == ".wav":
                 with open(os.path.join(text_output_dir, basename + ".txt"), 'w', encoding="utf-8",
                           errors="ignore") as output_file:
-                    result = model.transcribe(os.path.join(root, filename), language="en", fp16=False, beam_size=5, )
+                    result = model.transcribe(os.path.join(root, filename), language="en", fp16=False, beam_size=5)
                     output_file.write(result["text"])
 
 
