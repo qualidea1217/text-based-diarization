@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import random
 import string
 import time
 import wave
@@ -8,6 +9,28 @@ import xml.etree.ElementTree
 
 import pandas as pd
 import spacy
+
+dir_dict = {"AMI audio": "/local/scratch/pwu54/Text-based SD Dataset/AMI/audio/",
+            "AMI gt": "/local/scratch/pwu54/Text-based SD Dataset/AMI/transcript/",
+            "AMI text": "/local/scratch/pwu54/Text-based SD Dataset/AMI/whisper_output/",
+            "CallFriend audio": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/audio/",
+            "CallFriend gt": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/transcript/",
+            "CallFriend text": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/whisper_output/",
+            "CallHome English audio": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/CallHome/",
+            "CallHome English gt": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/transcript/",
+            "CallHome English text": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/whisper_output/",
+            "CHiME-5 audio": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/audio/",
+            "CHiME-5 gt": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/transcript/",
+            "CHiME-5 text": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/whisper_output/",
+            "DailyTalk audio": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/audio/",
+            "DailyTalk gt": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/transcript/",
+            "DailyTalk text": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/whisper_output/",
+            "ICSI audio": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/Signals/",
+            "ICSI gt": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/transcript/",
+            "ICSI text": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/whisper_output/",
+            "SBCSAE audio": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/",
+            "SBCSAE gt": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/transcript/",
+            "SBCSAE text": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/whisper_output/"}
 
 
 def timer(func):
@@ -323,26 +346,39 @@ def interview(csv_dir: str, segmentation: None | str = None):
         json.dump(dict_out, json_out, indent=4)
 
 
-def get_gt_scd_data(input_dir: str, min_merge_length: int | None = None):
+def get_train_val_test_filepath(gt_dir, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1, seed=42):
+    if train_ratio + val_ratio + test_ratio != 1.0:
+        raise ValueError("The sum of the ratios must equal 1.0")
+    random.seed(seed)
+    gt_filenames = os.listdir(gt_dir)
+    random.shuffle(gt_filenames)
+    total = len(gt_filenames)
+    train_index = int(train_ratio * total)
+    val_index = int((train_ratio + val_ratio) * total)
+    train_filepaths = [os.path.join(gt_dir, filename) for filename in gt_filenames[:train_index]]
+    val_filepaths = [os.path.join(gt_dir, filename) for filename in gt_filenames[train_index:val_index]]
+    test_filepaths = [os.path.join(gt_dir, filename) for filename in gt_filenames[val_index:]]
+    return train_filepaths, val_filepaths, test_filepaths
+
+
+def get_gt_scd_data(filepaths: list[str], output_json_name: str, merge: bool = True, segment: bool = True):
     text_list = []
     speaker_list = []
-    for root, dirnames, filenames in os.walk(input_dir):
-        for filename in filenames:
-            if "transcript" in root and "LibriCSS" not in root and os.path.splitext(filename)[1] == ".json":
-                print(root, filename)
-                with open(os.path.join(root, filename), 'r') as json_in:
-                    content = json.load(json_in)
-                    text_list.append([utterance[1] for utterance in content])
-                    speaker_list.append([utterance[0] for utterance in content])
-    if min_merge_length:
+    for filepath in filepaths:
+        if os.path.splitext(filepath)[1] == ".json":
+            with open(filepath, 'r') as json_in:
+                content = json.load(json_in)
+                text_list.append([utterance[1] for utterance in content if utterance[1] not in string.punctuation])
+                speaker_list.append([utterance[0] for utterance in content if utterance[1] not in string.punctuation])
+    if merge:
         for i in range(len(text_list)):
             merged_texts = []
             merged_speakers = []
             j = 0
             while j < len(text_list[i]):
-                if ((j < len(text_list[i]) - 1) and (speaker_list[i][j] == speaker_list[i][j + 1]) and (len(text_list[i][j].split()) < min_merge_length or len(text_list[i][j + 1].split()) < min_merge_length)):
+                if (j < len(text_list[i]) - 1) and (speaker_list[i][j] == speaker_list[i][j + 1]):
                     merged_sentence = text_list[i][j]
-                    while ((j < len(text_list[i]) - 1) and (speaker_list[i][j] == speaker_list[i][j + 1]) and (len(merged_sentence.split()) < min_merge_length or len(text_list[i][j + 1].split()) < min_merge_length)):
+                    while (j < len(text_list[i]) - 1) and (speaker_list[i][j] == speaker_list[i][j + 1]):
                         j += 1
                         merged_sentence += " " + text_list[i][j]
                     merged_texts.append(merged_sentence)
@@ -355,17 +391,42 @@ def get_gt_scd_data(input_dir: str, min_merge_length: int | None = None):
             text_list[i] = merged_texts
             speaker_list[i] = merged_speakers
 
-    with open("dataset7_scd.json", 'w') as json_out:
+    if segment:
+        spacy.require_gpu()  # if cupy is installed or spacy with gpu support is installed
+        nlp = spacy.load("en_core_web_trf")
+        for i in range(len(text_list)):
+            sentences = []
+            speaker_ids = []
+            for j in range(len(text_list[i])):
+                doc = nlp(text_list[i][j])
+                for sent in doc.sents:
+                    sentences.append(sent.text)
+                    speaker_ids.append(speaker_list[i][j])
+            text_list[i] = sentences
+            speaker_list[i] = speaker_ids
+
+    with open(output_json_name, 'w') as json_out:
         json.dump({"text_list": text_list, "speaker_list": speaker_list}, json_out, indent=4)
 
 
 if __name__ == "__main__":
-    # daily_talk("D:\\Text-based SD Dataset\\DailyTalk")
-    # icsi("D:\\Text-based SD Dataset\\ICSI")
-    # sbcsae("D:\\Text-based SD Dataset\\SBCSAE")
-    # callhome("D:\\Text-based SD Dataset\\CallHome English")
-    # libricss("D:\\Text-based SD Dataset\\LibriCSS")
-    # chime5("D:\\Text-based SD Dataset\\CHiME-5")
-    # ami("D:\\Text-based SD Dataset\\AMI")
-    # callfriend("D:\\Text-based SD Dataset\\CallFriend")
-    get_gt_scd_data("/local/scratch/pwu54/Text-based SD Dataset/")
+    train_filepath_all = []
+    val_filepath_all = []
+    test_filepath_all = []
+    for gt_dir in ["AMI gt", "CallFriend gt", "CallHome English gt", "CHiME-5 gt", "DailyTalk gt", "ICSI gt", "SBCSAE gt"]:
+        gt_dir = dir_dict[gt_dir]
+        train_filepaths, val_filepaths, test_filepaths = get_train_val_test_filepath(gt_dir)
+        train_filepath_all.extend(train_filepaths)
+        val_filepath_all.extend(val_filepaths)
+        test_filepath_all.extend(test_filepaths)
+    print("train data")
+    print(train_filepath_all)
+    print("val data")
+    print(val_filepath_all)
+    print("test data")
+    print(test_filepath_all)
+    # get_gt_scd_data(train_filepath_all, "dataset7_gt_train_sent.json")
+    # get_gt_scd_data(val_filepath_all, "dataset7_gt_val_sent.json")
+    get_gt_scd_data(test_filepath_all, "dataset7_gt_test_sent.json")
+
+

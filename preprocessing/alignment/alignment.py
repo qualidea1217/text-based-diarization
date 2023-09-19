@@ -39,7 +39,7 @@ def form_utterance(align_result: dict, remove_empty_utterance: bool = True) -> t
 
 
 def align_whisper_to_gt(whisper_output_file: str, gt_file: str):
-    with open(whisper_output_file, 'r') as hypo_in:
+    with open(whisper_output_file, 'r', encoding="utf-8", errors="ignore") as hypo_in:
         hypothesis = hypo_in.read()
     with open(gt_file, 'r') as ref_in:
         reference = json.load(ref_in)
@@ -56,17 +56,8 @@ def write_align_result_to_csv(align_result: dict, file_name: str):
 
 
 if __name__ == "__main__":
-    data = {
-        "hypothesis": ['ok', 'I', 'am', 'a', 'fish.', 'Are', 'you?', 'Hello', 'there.', 'How', 'are', 'you?', 'ok'],
-        "reference": {
-            "A": ['', 'I', 'am', 'a', 'fish.', '', '', '', '', '', '', '', ''],
-            "B": ['okay.', '', '', '', '', '', '', '', '', '', '', '', ''],
-            "C": ['', '', '', '', '', 'Are', 'you?', '', '', '', '', '', ''],
-            "D": ['', '', '', '', '', '', '', 'Hello', 'there.', '', '', '', ''],
-            "E": ['', '', '', '', '', '', '', '', '', 'How', 'are', 'you?', ''],
-        }
-    }
-    utterance, speakers = form_utterance(data)
+    align_result = align_whisper_to_gt("D:\\Text-based SD Dataset\\AMI\\whisper_output\\IS1008d.Mix-Headset.txt", "D:\\Text-based SD Dataset\\AMI\\transcript\\IS1008d.json")
+    utterance, speakers = form_utterance(align_result)
     print(utterance)
     print(speakers)
 

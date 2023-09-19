@@ -219,8 +219,11 @@ if __name__ == "__main__":
     #     retranscribe_with_silence_removal(dir_dict["SBCSAE audio"], txt_retry_dict, silence_thresh=-45.0)
     # transcribe(dir_dict["AMI audio"], dir_dict["AMI text"])
     # transcribe(dir_dict["CallFriend audio"], dir_dict["CallFriend text"])
-    # transcribe(dir_dict["CallHome English audio"], dir_dict["CallHome English text"])  # running
-    transcribe(dir_dict["CHiME-5 audio"], dir_dict["CHiME-5 text"])  # running
+    # transcribe(dir_dict["CallHome English audio"], dir_dict["CallHome English text"])
+    # transcribe(dir_dict["CHiME-5 audio"], dir_dict["CHiME-5 text"])
     # transcribe(dir_dict["DailyTalk audio"], dir_dict["DailyTalk text"])
-    # transcribe(dir_dict["ICSI audio"], dir_dict["ICSI text"])  # running
-    # transcribe(dir_dict["SBCSAE audio"], dir_dict["SBCSAE text"])  # running
+    # transcribe(dir_dict["ICSI audio"], dir_dict["ICSI text"])
+    # transcribe(dir_dict["SBCSAE audio"], dir_dict["SBCSAE text"])
+    model = whisper.load_model("medium.en")
+    result = model.transcribe("D:\\Text-based SD Dataset\\AMI\\audio\\IS1003d\\audio\\IS1003d.Mix-Headset.wav", language="en", fp16=False, beam_size=5)
+    print(result["text"])
