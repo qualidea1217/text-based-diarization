@@ -405,6 +405,15 @@ def get_gt_scd_data(filepaths: list[str], output_json_name: str, merge: bool = T
             text_list[i] = sentences
             speaker_list[i] = speaker_ids
 
+    text_list_filter = []
+    speaker_list_filter = []
+    for i in range(len(text_list)):
+        if text_list[i] != " " or text_list[i] != ".":
+            text_list_filter.append(text_list[i])
+            speaker_list_filter.append(speaker_list[i])
+    text_list = text_list_filter
+    speaker_list = speaker_list_filter
+
     with open(output_json_name, 'w') as json_out:
         json.dump({"text_list": text_list, "speaker_list": speaker_list}, json_out, indent=4)
 
@@ -414,7 +423,7 @@ if __name__ == "__main__":
     val_filepath_all = []
     test_filepath_all = []
     for gt_dir in ["AMI gt", "CallFriend gt", "CallHome English gt", "CHiME-5 gt", "DailyTalk gt", "ICSI gt", "SBCSAE gt"]:
-        gt_dir = dir_dict[gt_dir]
+        gt_dir = dir_dict[gt_dir].replace("transcript", "whisper_align")
         train_filepaths, val_filepaths, test_filepaths = get_train_val_test_filepath(gt_dir)
         train_filepath_all.extend(train_filepaths)
         val_filepath_all.extend(val_filepaths)
@@ -425,8 +434,8 @@ if __name__ == "__main__":
     print(val_filepath_all)
     print("test data")
     print(test_filepath_all)
-    # get_gt_scd_data(train_filepath_all, "dataset7_gt_train_sent.json")
-    # get_gt_scd_data(val_filepath_all, "dataset7_gt_val_sent.json")
-    get_gt_scd_data(test_filepath_all, "dataset7_gt_test_sent.json")
+    get_gt_scd_data(train_filepath_all, "dataset7_align_train_sent.json")
+    get_gt_scd_data(val_filepath_all, "dataset7_align_val_sent.json")
+    get_gt_scd_data(test_filepath_all, "dataset7_align_test_sent.json")
 
 
