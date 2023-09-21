@@ -112,15 +112,42 @@ def generate_json_data(input_dir: str, output_dir: str, history_utterance_num: i
 if __name__ == "__main__":
     # Generate train data
     generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_train.json",
-                       0, 0)
+                       "./roberta-d7-u3-s0-00/roberta-d7-u3-s0-00_train.json",
+                       3, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
+                       "./roberta-d7-u4-s0-00/roberta-d7-u4-s0-00_train.json",
+                       4, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
+                       "./roberta-d7-u5-s0-00/roberta-d7-u5-s0-00_train.json",
+                       5, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
+                       "./roberta-d7-u6-s0-00/roberta-d7-u6-s0-00_train.json",
+                       6, 0)
 
     # Generate validation data
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_val_sent.json",
-                       "/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_val.json",
-                       0, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
+                       "./roberta-d7-u3-s0-00/roberta-d7-u3-s0-00_val.json",
+                       3, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
+                       "./roberta-d7-u4-s0-00/roberta-d7-u4-s0-00_val.json",
+                       4, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
+                       "./roberta-d7-u5-s0-00/roberta-d7-u5-s0-00_val.json",
+                       5, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
+                       "./roberta-d7-u6-s0-00/roberta-d7-u6-s0-00_val.json",
+                       6, 0)
 
     # Generate test data
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_test_sent.json",
-                       "/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_test.json",
-                       0, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
+                       "./roberta-d7-u3-s0-00/roberta-d7-u3-s0-00_test.json",
+                       3, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
+                       "./roberta-d7-u4-s0-00/roberta-d7-u4-s0-00_test.json",
+                       4, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
+                       "./roberta-d7-u5-s0-00/roberta-d7-u5-s0-00_test.json",
+                       5, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
+                       "./roberta-d7-u6-s0-00/roberta-d7-u6-s0-00_test.json",
+                       6, 0)

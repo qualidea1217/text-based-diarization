@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=roberta_scd_sc_train
-#SBATCH --output=roberta_scd_sc_train_out.txt
+#SBATCH --job-name=dataset7_roberta_scd_512
+#SBATCH --output=dataset7_roberta_scd_512_out.txt
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 

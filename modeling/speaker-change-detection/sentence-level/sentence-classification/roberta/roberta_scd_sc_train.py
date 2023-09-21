@@ -16,21 +16,25 @@ tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="./token
 model = RobertaForSequenceClassification.from_pretrained('roberta-large', cache_dir="./models", num_labels=2)
 
 # Load raw data
-with open("/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_001.json", 'r') as json_in:
-    data_dict = json.load(json_in)
-    texts = data_dict["text"]
-    labels = data_dict["label"]
-    # randomly sample 20000 for verification
-    # paired_data = list(zip(texts, labels))
-    # random.seed(42)
-    # random_data = random.sample(paired_data, 200000)
-    # texts, labels = zip(*random_data)
+with open("/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_train.json", 'r') as json_train:
+    data_dict_train = json.load(json_train)
+    texts_train = data_dict_train["text"]
+    labels_train = data_dict_train["label"]
+
+with open("/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_val.json", 'r') as json_val:
+    data_dict_val = json.load(json_val)
+    texts_val = data_dict_val["text"]
+    labels_val = data_dict_val["label"]
+
+with open("/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_test.json", 'r') as json_test:
+    data_dict_test = json.load(json_test)
+    texts_test = data_dict_test["text"]
+    labels_test = data_dict_test["label"]
 
 # Create huggingface dataset
-custom_dataset = Dataset.from_dict({"text": texts, "label": labels})
-custom_dataset = custom_dataset.train_test_split(test_size=0.2, shuffle=True, seed=42)
-dataset_train = custom_dataset["train"]
-dataset_test = custom_dataset["test"]
+dataset_train = Dataset.from_dict({"text": texts_train, "label": labels_train})
+dataset_val = Dataset.from_dict({"text": texts_val, "label": labels_val})
+dataset_test = Dataset.from_dict({"text": texts_test, "label": labels_test})
 
 
 def preprocess_function(batch):
@@ -42,7 +46,7 @@ dataset_test = dataset_test.map(preprocess_function, batched=True)
 
 # 3. Define Training Arguments and Initialize Trainer
 training_args = TrainingArguments(
-    output_dir='./results/roberta-large-001',
+    output_dir='./results/dataset7-roberta-scd-512',
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
     per_device_eval_batch_size=BATCH_SIZE,
@@ -67,7 +71,7 @@ trainer = Trainer(
     model=model,
     args=training_args,
     train_dataset=dataset_train,
-    eval_dataset=dataset_test,
+    eval_dataset=dataset_val,
     tokenizer=tokenizer,
     compute_metrics=compute_metrics,
 )
