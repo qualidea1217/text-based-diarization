@@ -4,27 +4,43 @@ from multiprocessing import Pool
 
 from transformers import RobertaTokenizer
 
-
 MAX_LENGTH = 512
 SEPARATION = " </s> </s> "
-HISTORY_SEPARATION = " "
-HISTORY_UTTERANCE_START = " "
-FUTURE_SEPARATION = " "
+MODEL_CODE = "roberta-d7-u4-s0-20"
+
+MODEL_CODE_SEGMENT = MODEL_CODE.split('-')
+HISTORY_UTTERANCE_NUM = int([s[1:] for s in MODEL_CODE_SEGMENT if s.startswith("u")][0])
+FUTURE_SENTENCE_NUM = int([s[1:] for s in MODEL_CODE_SEGMENT if s.startswith("s")][0])
+HISTORY_UTTERANCE_START = [" "]
+if int(MODEL_CODE_SEGMENT[-1][0]) == 0:
+    HISTORY_UTTERANCE_START = [" "]
+elif int(MODEL_CODE_SEGMENT[-1][0]) == 1:
+    HISTORY_UTTERANCE_START = [" </u> "]
+elif int(MODEL_CODE_SEGMENT[-1][0]) == 2:
+    HISTORY_UTTERANCE_START = [f" </u{i}> " for i in range(1, HISTORY_UTTERANCE_NUM + 1)]
 FUTURE_START = " "
+if int(MODEL_CODE_SEGMENT[-1][1]) == 0:
+    FUTURE_START = " "
+elif int(MODEL_CODE_SEGMENT[-1][1]) == 1:
+    FUTURE_START = " </n> "
 
 tokenizer = RobertaTokenizer.from_pretrained("roberta-large", cache_dir="./tokenizers")
 # If new special tokens are added, remember to add it to the tokenizer and resize the model during data process and before training
+tokenizer.add_special_tokens({"additional_special_tokens": [*HISTORY_UTTERANCE_START, FUTURE_START]})
 
 
 def get_history_sequence(history: list, history_speaker: list) -> str:
-    if len(history) == 1:
-        return history[0]
-    history_sequence = HISTORY_UTTERANCE_START + history[0]
+    index = 1
+    history_sequence = HISTORY_UTTERANCE_START[0] + history[0]
     for i in range(1, len(history)):
         if history_speaker[i] == history_speaker[i - 1]:
             history_sequence += " " + history[i]
         else:
-            history_sequence += HISTORY_UTTERANCE_START + history[i]
+            if len(HISTORY_UTTERANCE_START) > 1:
+                history_sequence += HISTORY_UTTERANCE_START[index] + history[i]
+                index += 1
+            else:
+                history_sequence += HISTORY_UTTERANCE_START[0] + history[i]
     return history_sequence
 
 
@@ -45,7 +61,7 @@ def process_chunk(args):
                 future = FUTURE_START + " ".join(conversation[i + 1:i + 1 + future_sentence_num])
 
             input_context = conversation[i - 1] + SEPARATION + target + future
-            speaker_change = 0 if speaker_label[i - 1] == speaker_label[i] else 1
+            speaker_change = 0
 
             if len(tokenizer.encode(input_context)) > MAX_LENGTH:
                 continue
@@ -63,7 +79,7 @@ def process_chunk(args):
                     # Detect number of utterance in the history
                     if speaker_label[j] != speaker_label[j + 1]:
                         speaker_change += 1
-                    if speaker_change > history_utterance_num:  # Specify the number of utterance in history
+                    if speaker_change >= history_utterance_num:  # Specify the number of utterance in history
                         break
                     # If utterance is not fill out, continue to add sentence to history
                     history.insert(0, conversation[j])
@@ -112,42 +128,18 @@ def generate_json_data(input_dir: str, output_dir: str, history_utterance_num: i
 if __name__ == "__main__":
     # Generate train data
     generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u3-s0-00/roberta-d7-u3-s0-00_train.json",
-                       3, 0)
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u4-s0-00/roberta-d7-u4-s0-00_train.json",
-                       4, 0)
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u5-s0-00/roberta-d7-u5-s0-00_train.json",
-                       5, 0)
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u6-s0-00/roberta-d7-u6-s0-00_train.json",
-                       6, 0)
+                       f"./{MODEL_CODE}/{MODEL_CODE}_train.json",
+                       HISTORY_UTTERANCE_NUM, FUTURE_SENTENCE_NUM)
 
     # Generate validation data
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u3-s0-00/roberta-d7-u3-s0-00_val.json",
-                       3, 0)
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u4-s0-00/roberta-d7-u4-s0-00_val.json",
-                       4, 0)
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u5-s0-00/roberta-d7-u5-s0-00_val.json",
-                       5, 0)
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u6-s0-00/roberta-d7-u6-s0-00_val.json",
-                       6, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_val_sent.json",
+                       f"./{MODEL_CODE}/{MODEL_CODE}_val.json",
+                       HISTORY_UTTERANCE_NUM, FUTURE_SENTENCE_NUM)
 
     # Generate test data
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u3-s0-00/roberta-d7-u3-s0-00_test.json",
-                       3, 0)
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u4-s0-00/roberta-d7-u4-s0-00_test.json",
-                       4, 0)
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u5-s0-00/roberta-d7-u5-s0-00_test.json",
-                       5, 0)
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       "./roberta-d7-u6-s0-00/roberta-d7-u6-s0-00_test.json",
-                       6, 0)
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_test_sent.json",
+                       f"./{MODEL_CODE}/{MODEL_CODE}_test.json",
+                       HISTORY_UTTERANCE_NUM, FUTURE_SENTENCE_NUM)
+
+    # Save tokenizer
+    tokenizer.save_pretrained(f"./{MODEL_CODE}/tokenizer")

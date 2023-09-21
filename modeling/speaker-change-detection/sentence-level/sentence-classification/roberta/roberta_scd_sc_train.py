@@ -9,24 +9,28 @@ from transformers import RobertaTokenizer, RobertaForSequenceClassification, Tra
 
 MAX_LENGTH = 512
 BATCH_SIZE = 24
-EPOCHS = 5
+EPOCHS = 3
+
+MODEL_CODE = "roberta-d7-u4-s0-20"
 
 # Load tokenizer and model
-tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="./tokenizers")
+tokenizer = RobertaTokenizer.from_pretrained(f"./{MODEL_CODE}/tokenizer")
 model = RobertaForSequenceClassification.from_pretrained('roberta-large', cache_dir="./models", num_labels=2)
+# If special tokens are added, remember to resize the model's embedding space
+model.resize_token_embeddings(len(tokenizer))
 
 # Load raw data
-with open("/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_train.json", 'r') as json_train:
+with open(f"./{MODEL_CODE}/{MODEL_CODE}_train.json", 'r') as json_train:
     data_dict_train = json.load(json_train)
     texts_train = data_dict_train["text"]
     labels_train = data_dict_train["label"]
 
-with open("/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_val.json", 'r') as json_val:
+with open(f"./{MODEL_CODE}/{MODEL_CODE}_val.json", 'r') as json_val:
     data_dict_val = json.load(json_val)
     texts_val = data_dict_val["text"]
     labels_val = data_dict_val["label"]
 
-with open("/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_test.json", 'r') as json_test:
+with open(f"./{MODEL_CODE}/{MODEL_CODE}_test.json", 'r') as json_test:
     data_dict_test = json.load(json_test)
     texts_test = data_dict_test["text"]
     labels_test = data_dict_test["label"]
@@ -42,11 +46,12 @@ def preprocess_function(batch):
 
 
 dataset_train = dataset_train.map(preprocess_function, batched=True)
+dataset_val = dataset_val.map(preprocess_function, batched=True)
 dataset_test = dataset_test.map(preprocess_function, batched=True)
 
 # 3. Define Training Arguments and Initialize Trainer
 training_args = TrainingArguments(
-    output_dir='./results/dataset7-roberta-scd-512',
+    output_dir=f'./{MODEL_CODE}/results',
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
     per_device_eval_batch_size=BATCH_SIZE,
