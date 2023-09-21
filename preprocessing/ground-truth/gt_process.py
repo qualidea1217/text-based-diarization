@@ -405,14 +405,15 @@ def get_gt_scd_data(filepaths: list[str], output_json_name: str, merge: bool = T
             text_list[i] = sentences
             speaker_list[i] = speaker_ids
 
-    text_list_filter = []
-    speaker_list_filter = []
     for i in range(len(text_list)):
-        if text_list[i] != " " or text_list[i] != ".":
-            text_list_filter.append(text_list[i])
-            speaker_list_filter.append(speaker_list[i])
-    text_list = text_list_filter
-    speaker_list = speaker_list_filter
+        text_list_filter = []
+        speaker_list_filter = []
+        for j in range(len(text_list[i])):
+            if len(text_list[i][j]) > 1:
+                text_list_filter.append(text_list[i][j])
+                speaker_list_filter.append(speaker_list[i][j])
+        text_list[i] = text_list_filter
+        speaker_list[i] = speaker_list_filter
 
     with open(output_json_name, 'w') as json_out:
         json.dump({"text_list": text_list, "speaker_list": speaker_list}, json_out, indent=4)
