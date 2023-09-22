@@ -70,6 +70,8 @@ def compute_metrics(eval_pred):
     precision = precision_score(labels, predictions)
     recall = recall_score(labels, predictions)
     f1 = f1_score(labels, predictions)
+    with open(f"./{MODEL_CODE}/eval_metrics.txt", 'a') as eval_log:
+        eval_log.write(f"accuracy: {acc}, precision: {precision}, recall: {recall}, f1: {f1}\n")
     return {'accuracy': acc, 'precision': precision, 'recall': recall, 'f1': f1}
 
 
