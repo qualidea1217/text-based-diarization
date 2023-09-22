@@ -11,9 +11,10 @@ MAX_LENGTH = 512
 BATCH_SIZE = 24
 EPOCHS = 3
 
-MODEL_CODE = "roberta-d7-u4-s0-20"
+MODEL_CODE = "roberta-d7-u8-s1-21"
 
 # Load tokenizer and model
+# tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="./tokenizers")
 tokenizer = RobertaTokenizer.from_pretrained(f"./{MODEL_CODE}/tokenizer")
 model = RobertaForSequenceClassification.from_pretrained('roberta-large', cache_dir="./models", num_labels=2)
 # If special tokens are added, remember to resize the model's embedding space
@@ -55,7 +56,7 @@ training_args = TrainingArguments(
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
     per_device_eval_batch_size=BATCH_SIZE,
-    learning_rate=1e-6,
+    learning_rate=5e-5,
     optim="adamw_torch",
     save_strategy="epoch",
     evaluation_strategy="epoch"

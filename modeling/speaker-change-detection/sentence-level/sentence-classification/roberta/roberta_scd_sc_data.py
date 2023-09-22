@@ -6,7 +6,7 @@ from transformers import RobertaTokenizer
 
 MAX_LENGTH = 512
 SEPARATION = " </s> </s> "
-MODEL_CODE = "roberta-d7-u4-s0-20"
+MODEL_CODE = "roberta-d7-u8-s1-21"
 
 MODEL_CODE_SEGMENT = MODEL_CODE.split('-')
 HISTORY_UTTERANCE_NUM = int([s[1:] for s in MODEL_CODE_SEGMENT if s.startswith("u")][0])

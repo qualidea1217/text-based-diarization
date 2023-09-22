@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=roberta-d7-u4-s0-20
-#SBATCH --output=roberta-d7-u4-s0-20.txt
+#SBATCH --job-name=roberta-d7-u8-s1-21
+#SBATCH --output=roberta-d7-u8-s1-21.txt
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 
