@@ -8,17 +8,19 @@ from datasets import Dataset
 from transformers import RobertaTokenizer, RobertaForSequenceClassification, TrainingArguments, Trainer
 
 MAX_LENGTH = 512
-BATCH_SIZE = 24
+BATCH_SIZE = 8
+LEARNING_RATE = 5e-6
 EPOCHS = 3
 
-MODEL_CODE = "roberta-d7-u8-s1-21"
+MODEL_CODE = "roberta-d7-u4-s1-21"
 
 # Load tokenizer and model
 # tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="./tokenizers")
 tokenizer = RobertaTokenizer.from_pretrained(f"./{MODEL_CODE}/tokenizer")
 model = RobertaForSequenceClassification.from_pretrained('roberta-large', cache_dir="./models", num_labels=2)
 # If special tokens are added, remember to resize the model's embedding space
-model.resize_token_embeddings(len(tokenizer))
+if MODEL_CODE.split('-')[-1] != "00":
+    model.resize_token_embeddings(len(tokenizer))
 
 # Load raw data
 with open(f"./{MODEL_CODE}/{MODEL_CODE}_train.json", 'r') as json_train:
@@ -56,7 +58,7 @@ training_args = TrainingArguments(
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
     per_device_eval_batch_size=BATCH_SIZE,
-    learning_rate=5e-5,
+    learning_rate=LEARNING_RATE,
     optim="adamw_torch",
     save_strategy="epoch",
     evaluation_strategy="epoch"
@@ -70,8 +72,6 @@ def compute_metrics(eval_pred):
     precision = precision_score(labels, predictions)
     recall = recall_score(labels, predictions)
     f1 = f1_score(labels, predictions)
-    with open(f"./{MODEL_CODE}/eval_metrics.txt", 'a') as eval_log:
-        eval_log.write(f"accuracy: {acc}, precision: {precision}, recall: {recall}, f1: {f1}\n")
     return {'accuracy': acc, 'precision': precision, 'recall': recall, 'f1': f1}
 
 

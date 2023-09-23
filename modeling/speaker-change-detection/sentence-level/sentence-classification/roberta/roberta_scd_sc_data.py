@@ -6,7 +6,7 @@ from transformers import RobertaTokenizer
 
 MAX_LENGTH = 512
 SEPARATION = " </s> </s> "
-MODEL_CODE = "roberta-d7-u8-s1-21"
+MODEL_CODE = "roberta-d7-u4-s1-21"
 
 MODEL_CODE_SEGMENT = MODEL_CODE.split('-')
 HISTORY_UTTERANCE_NUM = int([s[1:] for s in MODEL_CODE_SEGMENT if s.startswith("u")][0])
@@ -26,7 +26,12 @@ elif int(MODEL_CODE_SEGMENT[-1][1]) == 1:
 
 tokenizer = RobertaTokenizer.from_pretrained("roberta-large", cache_dir="./tokenizers")
 # If new special tokens are added, remember to add it to the tokenizer and resize the model during data process and before training
-tokenizer.add_special_tokens({"additional_special_tokens": [*HISTORY_UTTERANCE_START, FUTURE_START]})
+if MODEL_CODE_SEGMENT[-1] == "11" or MODEL_CODE_SEGMENT[-1] == "21":
+    tokenizer.add_special_tokens({"additional_special_tokens": [*HISTORY_UTTERANCE_START, FUTURE_START]})
+elif MODEL_CODE_SEGMENT[-1] == "10" or MODEL_CODE_SEGMENT[-1] == "20":
+    tokenizer.add_special_tokens({"additional_special_tokens": [*HISTORY_UTTERANCE_START]})
+elif MODEL_CODE_SEGMENT[-1] == "01":
+    tokenizer.add_special_tokens({"additional_special_tokens": [FUTURE_START]})
 
 
 def get_history_sequence(history: list, history_speaker: list) -> str:
