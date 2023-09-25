@@ -1,33 +1,12 @@
 import json
+import os
 
 import numpy as np
 from datasets import Dataset
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from transformers import RobertaTokenizer, RobertaForSequenceClassification, TrainingArguments, Trainer
+from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer
 
 MAX_LENGTH = 512
-BATCH_SIZE = 128
-EPOCHS = 5
-
-# Load tokenizer and model
-tokenizer = RobertaTokenizer.from_pretrained("./results/roberta-large-001/checkpoint-20001")
-model = RobertaForSequenceClassification.from_pretrained('roberta-large', cache_dir="./models", num_labels=2)
-model.to("cuda")
-
-with open("/local/scratch/pwu54/Text-based SD Dataset/dataset7_roberta_scd_512_001.json", 'r') as json_in:
-    data_dict = json.load(json_in)
-    texts = data_dict["text"]
-    labels = data_dict["label"]
-
-# Create huggingface dataset
-custom_dataset = Dataset.from_dict({"text": texts, "label": labels})
-
-
-def preprocess_function(batch):
-    return tokenizer(batch["text"], truncation=True, padding="max_length", max_length=MAX_LENGTH)
-
-
-custom_dataset = custom_dataset.map(preprocess_function, batched=True)
 
 
 def compute_metrics(eval_pred):
@@ -40,18 +19,37 @@ def compute_metrics(eval_pred):
     return {'accuracy': acc, 'precision': precision, 'recall': recall, 'f1': f1}
 
 
-training_args = TrainingArguments(
-    output_dir="./results/eval",
-    per_device_eval_batch_size=BATCH_SIZE,
-    evaluation_strategy="epoch"
-)
+def get_test_results(model_code: str):
+    tokenizer = RobertaTokenizer.from_pretrained(f"./{model_code}/tokenizer")
+    with open(f"./{model_code}/{model_code}_test.json", 'r') as json_test:
+        data_dict_test = json.load(json_test)
+        texts_test = data_dict_test["text"]
+        labels_test = data_dict_test["label"]
+    dataset_test = Dataset.from_dict({"text": texts_test, "label": labels_test})
 
-trainer = Trainer(
-    model=model,
-    eval_dataset=custom_dataset,
-    tokenizer=tokenizer,
-    compute_metrics=compute_metrics,
-)
+    def preprocess_function(batch):
+        return tokenizer(batch["text"], truncation=True, padding="max_length", max_length=MAX_LENGTH)
 
-metrics = trainer.evaluate(eval_dataset=custom_dataset)
-print(metrics)
+    dataset_test = dataset_test.map(preprocess_function, batched=True)
+    for checkpoint in os.listdir(f"./{model_code}/results"):
+        if "checkpoint" in checkpoint:
+            model = RobertaForSequenceClassification.from_pretrained(os.path.join(f"./{model_code}/results", checkpoint))
+            trainer = Trainer(
+                model=model,
+                tokenizer=tokenizer,
+                compute_metrics=compute_metrics,
+            )
+            results = trainer.evaluate(dataset_test)
+            print(f"{model_code} {checkpoint} {results}")
+
+
+if __name__ == "__main__":
+    get_test_results("roberta-d7-u4-s0-00")
+    get_test_results("roberta-d7-u4-s0-10")
+    get_test_results("roberta-d7-u4-s0-20")
+    get_test_results("roberta-d7-u4-s1-00")
+    get_test_results("roberta-d7-u4-s1-01")
+    get_test_results("roberta-d7-u4-s1-10")
+    get_test_results("roberta-d7-u4-s1-11")
+    get_test_results("roberta-d7-u4-s1-20")
+    get_test_results("roberta-d7-u4-s1-21")
