@@ -11,6 +11,7 @@ MODEL_CODE = "roberta-d7-u4-s1-21"
 MODEL_CODE_SEGMENT = MODEL_CODE.split('-')
 HISTORY_UTTERANCE_NUM = int([s[1:] for s in MODEL_CODE_SEGMENT if s.startswith("u")][0])
 FUTURE_SENTENCE_NUM = int([s[1:] for s in MODEL_CODE_SEGMENT if s.startswith("s")][0])
+DATASET_NUM = int([s[1:] for s in MODEL_CODE_SEGMENT if s.startswith("d")][0])
 HISTORY_UTTERANCE_START = [" "]
 if int(MODEL_CODE_SEGMENT[-1][0]) == 0:
     HISTORY_UTTERANCE_START = [" "]
@@ -148,3 +149,9 @@ if __name__ == "__main__":
 
     # Save tokenizer
     tokenizer.save_pretrained(f"./{MODEL_CODE}/tokenizer")
+
+    if DATASET_NUM == 8:
+        # Generate INTERVIEW dataset for training
+        generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json",
+                           f"./{MODEL_CODE}/{MODEL_CODE}_interview.json",
+                           HISTORY_UTTERANCE_NUM, FUTURE_SENTENCE_NUM)

@@ -9,10 +9,10 @@ from transformers import RobertaTokenizer, RobertaForSequenceClassification, Tra
 
 MAX_LENGTH = 512
 BATCH_SIZE = 8
-LEARNING_RATE = 5e-6
+LEARNING_RATE = 3e-6
 EPOCHS = 3
 
-MODEL_CODE = "roberta-d7-u4-s1-21"
+MODEL_CODE = "roberta-d8-u4-s1-21"
 
 # Load tokenizer and model
 # tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="./tokenizers")
@@ -38,23 +38,33 @@ with open(f"./{MODEL_CODE}/{MODEL_CODE}_test.json", 'r') as json_test:
     texts_test = data_dict_test["text"]
     labels_test = data_dict_test["label"]
 
+# Load INTERVIEW dataset
+with open(f"./{MODEL_CODE}/{MODEL_CODE}_interview.json", 'r') as json_test:
+    data_dict_interview = json.load(json_test)
+    texts_interview = data_dict_interview["text"][:1000000]
+    labels_interview = data_dict_interview["label"][:1000000]
+
 # Create huggingface dataset
 dataset_train = Dataset.from_dict({"text": texts_train, "label": labels_train})
 dataset_val = Dataset.from_dict({"text": texts_val, "label": labels_val})
 dataset_test = Dataset.from_dict({"text": texts_test, "label": labels_test})
+# Create INTERVIEW dataset if used
+dataset_interview = Dataset.from_dict({"text": texts_interview, "label": labels_interview})
 
 
 def preprocess_function(batch):
     return tokenizer(batch["text"], truncation=True, padding="max_length", max_length=MAX_LENGTH)
 
 
-dataset_train = dataset_train.map(preprocess_function, batched=True)
-dataset_val = dataset_val.map(preprocess_function, batched=True)
-dataset_test = dataset_test.map(preprocess_function, batched=True)
+dataset_train = dataset_train.map(preprocess_function, batched=True, num_proc=8)
+dataset_val = dataset_val.map(preprocess_function, batched=True, num_proc=8)
+dataset_test = dataset_test.map(preprocess_function, batched=True, num_proc=8)
+# Process INTERVIEW dataset if used
+dataset_interview = dataset_interview.map(preprocess_function, batched=True, num_proc=8)
 
 # 3. Define Training Arguments and Initialize Trainer
 training_args = TrainingArguments(
-    output_dir=f'./{MODEL_CODE}/results',
+    output_dir=f'./{MODEL_CODE}/results/interview',
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
     per_device_eval_batch_size=BATCH_SIZE,
@@ -78,7 +88,7 @@ def compute_metrics(eval_pred):
 trainer = Trainer(
     model=model,
     args=training_args,
-    train_dataset=dataset_train,
+    train_dataset=dataset_interview,
     eval_dataset=dataset_val,
     tokenizer=tokenizer,
     compute_metrics=compute_metrics,
