@@ -41,8 +41,8 @@ with open(f"./{MODEL_CODE}/{MODEL_CODE}_test.json", 'r') as json_test:
 # Load INTERVIEW dataset
 with open(f"./{MODEL_CODE}/{MODEL_CODE}_interview.json", 'r') as json_test:
     data_dict_interview = json.load(json_test)
-    texts_interview = data_dict_interview["text"][:1000000]
-    labels_interview = data_dict_interview["label"][:1000000]
+    texts_interview = data_dict_interview["text"][:1200000]
+    labels_interview = data_dict_interview["label"][:1200000]
 
 # Create huggingface dataset
 dataset_train = Dataset.from_dict({"text": texts_train, "label": labels_train})
