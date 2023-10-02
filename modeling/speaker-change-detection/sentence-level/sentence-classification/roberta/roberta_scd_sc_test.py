@@ -33,9 +33,10 @@ def get_test_results(model_code: str):
         return tokenizer(batch["text"], truncation=True, padding="max_length", max_length=MAX_LENGTH)
 
     dataset_test = dataset_test.map(preprocess_function, batched=True)
-    for checkpoint in os.listdir(f"./{model_code}/results"):
+    checkpoint_dir = f"./{model_code}/results/2sp"
+    for checkpoint in os.listdir(checkpoint_dir):
         if "checkpoint" in checkpoint:
-            model = RobertaForSequenceClassification.from_pretrained(os.path.join(f"./{model_code}/results", checkpoint))
+            model = RobertaForSequenceClassification.from_pretrained(os.path.join(checkpoint_dir, checkpoint))
             trainer = Trainer(
                 model=model,
                 tokenizer=tokenizer,
