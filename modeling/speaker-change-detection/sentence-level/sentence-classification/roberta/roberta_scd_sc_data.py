@@ -6,7 +6,7 @@ from transformers import RobertaTokenizer
 
 MAX_LENGTH = 512
 SEPARATION = " </s> </s> "
-MODEL_CODE = "roberta-d7-u4-s1-21"
+MODEL_CODE = "roberta-d8-u4-s1-21"
 
 MODEL_CODE_SEGMENT = MODEL_CODE.split('-')
 HISTORY_UTTERANCE_NUM = int([s[1:] for s in MODEL_CODE_SEGMENT if s.startswith("u")][0])
@@ -133,18 +133,18 @@ def generate_json_data(input_dir: str, output_dir: str, history_utterance_num: i
 
 if __name__ == "__main__":
     # Generate train data
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json",
-                       f"./{MODEL_CODE}/{MODEL_CODE}_train.json",
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent_2sp.json",
+                       f"./{MODEL_CODE}/{MODEL_CODE}_train_2sp.json",
                        HISTORY_UTTERANCE_NUM, FUTURE_SENTENCE_NUM)
 
     # Generate validation data
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_val_sent.json",
-                       f"./{MODEL_CODE}/{MODEL_CODE}_val.json",
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_val_sent_2sp.json",
+                       f"./{MODEL_CODE}/{MODEL_CODE}_val_2sp.json",
                        HISTORY_UTTERANCE_NUM, FUTURE_SENTENCE_NUM)
 
     # Generate test data
-    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_test_sent.json",
-                       f"./{MODEL_CODE}/{MODEL_CODE}_test.json",
+    generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_test_sent_2sp.json",
+                       f"./{MODEL_CODE}/{MODEL_CODE}_test_2sp.json",
                        HISTORY_UTTERANCE_NUM, FUTURE_SENTENCE_NUM)
 
     # Save tokenizer
@@ -152,6 +152,6 @@ if __name__ == "__main__":
 
     if DATASET_NUM == 8:
         # Generate INTERVIEW dataset for training
-        generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json",
-                           f"./{MODEL_CODE}/{MODEL_CODE}_interview.json",
+        generate_json_data("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence_2sp.json",
+                           f"./{MODEL_CODE}/{MODEL_CODE}_interview_2sp.json",
                            HISTORY_UTTERANCE_NUM, FUTURE_SENTENCE_NUM)

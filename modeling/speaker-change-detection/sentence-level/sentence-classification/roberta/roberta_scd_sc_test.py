@@ -21,10 +21,12 @@ def compute_metrics(eval_pred):
 
 def get_test_results(model_code: str):
     tokenizer = RobertaTokenizer.from_pretrained(f"./{model_code}/tokenizer")
-    with open(f"./{model_code}/{model_code}_test.json", 'r') as json_test:
+    with open(f"./{model_code}/{model_code}_test_2sp.json", 'r') as json_test:
         data_dict_test = json.load(json_test)
         texts_test = data_dict_test["text"]
         labels_test = data_dict_test["label"]
+        print(labels_test.count(0))
+        print(labels_test.count(1))
     dataset_test = Dataset.from_dict({"text": texts_test, "label": labels_test})
 
     def preprocess_function(batch):
@@ -44,12 +46,4 @@ def get_test_results(model_code: str):
 
 
 if __name__ == "__main__":
-    get_test_results("roberta-d7-u4-s0-00")
-    get_test_results("roberta-d7-u4-s0-10")
-    get_test_results("roberta-d7-u4-s0-20")
-    get_test_results("roberta-d7-u4-s1-00")
-    get_test_results("roberta-d7-u4-s1-01")
-    get_test_results("roberta-d7-u4-s1-10")
-    get_test_results("roberta-d7-u4-s1-11")
-    get_test_results("roberta-d7-u4-s1-20")
     get_test_results("roberta-d7-u4-s1-21")

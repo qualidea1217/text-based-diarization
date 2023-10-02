@@ -305,7 +305,7 @@ def callfriend(root_dir: str):
             json.dump(transcript, json_out, indent=4)
 
 
-def interview(csv_dir: str, segmentation: None | str = None):
+def interview(csv_dir: str, segmentation: None | str = None, max_speaker: None | int = 2):
     # extract episode number, utterances, and speaker ids to python lists
     df = pd.read_csv(csv_dir)
     df = df.sort_values(by=["episode", "episode_order"])
@@ -325,6 +325,11 @@ def interview(csv_dir: str, segmentation: None | str = None):
         text_list.append(utterances)
         speaker_list.append(speaker_ids)
 
+    if max_speaker:
+        episode_list = [episode_list[i] for i in range(len(episode_list)) if len(set(speaker_list[i])) <= max_speaker]
+        text_list = [text_list[i] for i in range(len(text_list)) if len(set(speaker_list[i])) <= max_speaker]
+        speaker_list = [speaker_list[i] for i in range(len(speaker_list)) if len(set(speaker_list[i])) <= max_speaker]
+
     # for each utterance in each episode, do sentence segmentation and adjust speaker id accordingly
     # use spacy to do sentence segmentation
     if segmentation == "sentence":
@@ -342,7 +347,7 @@ def interview(csv_dir: str, segmentation: None | str = None):
             speaker_list[i] = speaker_ids
 
     dict_out = {"episode_list": episode_list, "text_list": text_list, "speaker_list": speaker_list}
-    with open("interview_utterance.json", 'w') as json_out:
+    with open("interview_sentence_2sp.json", 'w') as json_out:
         json.dump(dict_out, json_out, indent=4)
 
 
@@ -361,7 +366,7 @@ def get_train_val_test_filepath(gt_dir, train_ratio=0.8, val_ratio=0.1, test_rat
     return train_filepaths, val_filepaths, test_filepaths
 
 
-def get_gt_scd_data(filepaths: list[str], output_json_name: str, merge: bool = True, segment: bool = True):
+def get_gt_scd_data(filepaths: list[str], output_json_name: str, merge: bool = True, segment: bool = True, max_speaker: None | int = None):
     text_list = []
     speaker_list = []
     for filepath in filepaths:
@@ -370,6 +375,9 @@ def get_gt_scd_data(filepaths: list[str], output_json_name: str, merge: bool = T
                 content = json.load(json_in)
                 text_list.append([utterance[1] for utterance in content if utterance[1] not in string.punctuation])
                 speaker_list.append([utterance[0] for utterance in content if utterance[1] not in string.punctuation])
+    if max_speaker:
+        text_list = [text_list[i] for i in range(len(text_list)) if len(set(speaker_list[i])) <= max_speaker]
+        speaker_list = [speaker_list[i] for i in range(len(speaker_list)) if len(set(speaker_list[i])) <= max_speaker]
     if merge:
         for i in range(len(text_list)):
             merged_texts = []
@@ -420,23 +428,43 @@ def get_gt_scd_data(filepaths: list[str], output_json_name: str, merge: bool = T
 
 
 if __name__ == "__main__":
-    train_filepath_all = []
-    val_filepath_all = []
-    test_filepath_all = []
-    for gt_dir in ["AMI gt", "CallFriend gt", "CallHome English gt", "CHiME-5 gt", "DailyTalk gt", "ICSI gt", "SBCSAE gt"]:
-        gt_dir = dir_dict[gt_dir].replace("transcript", "whisper_align")
-        train_filepaths, val_filepaths, test_filepaths = get_train_val_test_filepath(gt_dir)
-        train_filepath_all.extend(train_filepaths)
-        val_filepath_all.extend(val_filepaths)
-        test_filepath_all.extend(test_filepaths)
-    print("train data")
-    print(train_filepath_all)
-    print("val data")
-    print(val_filepath_all)
-    print("test data")
-    print(test_filepath_all)
-    get_gt_scd_data(train_filepath_all, "dataset7_align_train_sent.json")
-    get_gt_scd_data(val_filepath_all, "dataset7_align_val_sent.json")
-    get_gt_scd_data(test_filepath_all, "dataset7_align_test_sent.json")
+    # train_filepath_all = []
+    # val_filepath_all = []
+    # test_filepath_all = []
+    # for gt_dir in ["AMI gt", "CallFriend gt", "CallHome English gt", "CHiME-5 gt", "DailyTalk gt", "ICSI gt", "SBCSAE gt"]:
+    #     gt_dir = dir_dict[gt_dir].replace("transcript", "whisper_align")
+    #     train_filepaths, val_filepaths, test_filepaths = get_train_val_test_filepath(gt_dir)
+    #     train_filepath_all.extend(train_filepaths)
+    #     val_filepath_all.extend(val_filepaths)
+    #     test_filepath_all.extend(test_filepaths)
+    # print("train data")
+    # print(train_filepath_all)
+    # print("val data")
+    # print(val_filepath_all)
+    # print("test data")
+    # print(test_filepath_all)
+    # get_gt_scd_data(train_filepath_all, "dataset7_align_train_sent_2sp.json", max_speaker=2)
+    # get_gt_scd_data(val_filepath_all, "dataset7_align_val_sent_2sp.json", max_speaker=2)
+    # get_gt_scd_data(test_filepath_all, "dataset7_align_test_sent_2sp.json", max_speaker=2)
+
+    # interview("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/utterances.csv", "sentence", 2)
+
+    with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json", 'r') as json_in:
+        data_dict = json.load(json_in)
+        episode_list = data_dict["episode_list"]
+        text_list = data_dict["text_list"]
+        speaker_list = data_dict["speaker_list"]
+
+    max_speaker = 2
+    episode_list = [episode_list[i] for i in range(len(episode_list)) if len(set(speaker_list[i])) <= max_speaker]
+    text_list = [text_list[i] for i in range(len(text_list)) if len(set(speaker_list[i])) <= max_speaker]
+    speaker_list = [speaker_list[i] for i in range(len(speaker_list)) if len(set(speaker_list[i])) <= max_speaker]
+    print(len(episode_list))
+    print(len(text_list))
+    print(len(speaker_list))
+
+    dict_out = {"episode_list": episode_list, "text_list": text_list, "speaker_list": speaker_list}
+    with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence_2sp.json", 'w') as json_out:
+        json.dump(dict_out, json_out, indent=4)
 
 
