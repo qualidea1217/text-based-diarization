@@ -17,10 +17,11 @@ MODEL_CODE = "roberta-d8-u4-s1-21"
 # Load tokenizer and model
 # tokenizer = RobertaTokenizer.from_pretrained('roberta-large', cache_dir="./tokenizers")
 tokenizer = RobertaTokenizer.from_pretrained(f"./{MODEL_CODE}/tokenizer")
-model = RobertaForSequenceClassification.from_pretrained('roberta-large', cache_dir="./models", num_labels=2)
+# model = RobertaForSequenceClassification.from_pretrained('roberta-large', cache_dir="./models", num_labels=2)
+model = RobertaForSequenceClassification.from_pretrained(f'./{MODEL_CODE}/results/interview-2sp/checkpoint-286653', num_labels=2)
 # If special tokens are added, remember to resize the model's embedding space
-if MODEL_CODE.split('-')[-1] != "00":
-    model.resize_token_embeddings(len(tokenizer))
+# if MODEL_CODE.split('-')[-1] != "00":
+#     model.resize_token_embeddings(len(tokenizer))
 
 # Load raw data
 with open(f"./{MODEL_CODE}/{MODEL_CODE}_train_2sp.json", 'r') as json_train:
@@ -39,17 +40,17 @@ with open(f"./{MODEL_CODE}/{MODEL_CODE}_test_2sp.json", 'r') as json_test:
     labels_test = data_dict_test["label"]
 
 # Load INTERVIEW dataset
-with open(f"./{MODEL_CODE}/{MODEL_CODE}_interview_2sp.json", 'r') as json_test:
-    data_dict_interview = json.load(json_test)
-    texts_interview = data_dict_interview["text"]
-    labels_interview = data_dict_interview["label"]
+# with open(f"./{MODEL_CODE}/{MODEL_CODE}_interview_2sp.json", 'r') as json_test:
+#     data_dict_interview = json.load(json_test)
+#     texts_interview = data_dict_interview["text"]
+#     labels_interview = data_dict_interview["label"]
 
 # Create huggingface dataset
 dataset_train = Dataset.from_dict({"text": texts_train, "label": labels_train})
 dataset_val = Dataset.from_dict({"text": texts_val, "label": labels_val})
 dataset_test = Dataset.from_dict({"text": texts_test, "label": labels_test})
 # Create INTERVIEW dataset if used
-dataset_interview = Dataset.from_dict({"text": texts_interview, "label": labels_interview})
+# dataset_interview = Dataset.from_dict({"text": texts_interview, "label": labels_interview})
 
 
 def preprocess_function(batch):
@@ -60,11 +61,11 @@ dataset_train = dataset_train.map(preprocess_function, batched=True, num_proc=4)
 dataset_val = dataset_val.map(preprocess_function, batched=True, num_proc=4)
 dataset_test = dataset_test.map(preprocess_function, batched=True, num_proc=4)
 # Process INTERVIEW dataset if used
-dataset_interview = dataset_interview.map(preprocess_function, batched=True, num_proc=4)
+# dataset_interview = dataset_interview.map(preprocess_function, batched=True, num_proc=4)
 
 # 3. Define Training Arguments and Initialize Trainer
 training_args = TrainingArguments(
-    output_dir=f'./{MODEL_CODE}/results/interview-2sp',
+    output_dir=f'./{MODEL_CODE}/results/2sp',
     num_train_epochs=EPOCHS,
     per_device_train_batch_size=BATCH_SIZE,
     per_device_eval_batch_size=BATCH_SIZE,
@@ -88,7 +89,7 @@ def compute_metrics(eval_pred):
 trainer = Trainer(
     model=model,
     args=training_args,
-    train_dataset=dataset_interview,
+    train_dataset=dataset_train,
     eval_dataset=dataset_val,
     tokenizer=tokenizer,
     compute_metrics=compute_metrics,
