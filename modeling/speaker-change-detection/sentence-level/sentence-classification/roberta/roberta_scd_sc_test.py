@@ -1,5 +1,7 @@
 import json
 import os
+
+import spacy
 from tqdm import trange, tqdm
 
 import numpy as np
@@ -160,6 +162,10 @@ def predict_dialogue(conversation: list[str], speaker_label: list, model_code: s
     y_pred_list = [predict_single_input(tokenizer, model, input_context) for input_context in tqdm(input_context_list)]
     speaker_label_pred = recreate_speaker_label_2sp(conversation, y_pred_list, speaker_label)
     return y_pred_list, speaker_label_pred
+
+
+def get_conversation_pred(conversation: list[str], speaker_label: list):
+    return [[speaker_label[i], conversation[i]] for i in range(len(conversation))]
 
 
 if __name__ == "__main__":
