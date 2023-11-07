@@ -1,13 +1,13 @@
 import json
 import os
-
-import spacy
-from tqdm import trange, tqdm
+import string
 
 import numpy as np
+import spacy
 import torch
 from datasets import Dataset
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from tqdm import tqdm
 from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer
 
 MAX_LENGTH = 512
@@ -164,31 +164,54 @@ def predict_dialogue(conversation: list[str], speaker_label: list, model_code: s
     return y_pred_list, speaker_label_pred
 
 
-def get_conversation_pred(conversation: list[str], speaker_label: list):
+def get_conversation_w_speaker(conversation: list[str], speaker_label: list):
     return [[speaker_label[i], conversation[i]] for i in range(len(conversation))]
 
 
+def preprocess_conversation(content, merge: bool = True, segment: bool = True):
+    text_list = [utterance[1] for utterance in content if utterance[1] not in string.punctuation]
+    speaker_list = [utterance[0] for utterance in content if utterance[1] not in string.punctuation]
+    if merge:
+        merged_texts = []
+        merged_speakers = []
+        j = 0
+        while j < len(text_list):
+            if (j < len(text_list) - 1) and (speaker_list[j] == speaker_list[j + 1]):
+                merged_sentence = text_list[j]
+                while (j < len(text_list) - 1) and (speaker_list[j] == speaker_list[j + 1]):
+                    j += 1
+                    merged_sentence += " " + text_list[j]
+                merged_texts.append(merged_sentence)
+                merged_speakers.append(speaker_list[j])
+                j += 1
+            else:
+                merged_texts.append(text_list[j])
+                merged_speakers.append(speaker_list[j])
+                j += 1
+        text_list = merged_texts
+        speaker_list = merged_speakers
+    if segment:
+        spacy.require_gpu()  # if cupy is installed or spacy with gpu support is installed
+        nlp = spacy.load("en_core_web_trf")
+        sentences = []
+        speaker_ids = []
+        for j in range(len(text_list)):
+            doc = nlp(text_list[j])
+            for sent in doc.sents:
+                sentences.append(sent.text)
+                speaker_ids.append(speaker_list[j])
+        text_list = sentences
+        speaker_list = speaker_ids
+    return text_list, speaker_list
+
+
 if __name__ == "__main__":
-    conversation = [
-        "Did you catch the latest episode of 'Galactic Explorers'?",
-        "I did, and I was blown away by the plot twists!",
-        "Right? I never saw that coming.",
-        "Especially the part with the alien council.",
-        "I was on the edge of my seat the entire time.",
-        "And that cliffhanger at the end...",
-        "I can't wait for next week's episode."
-    ]
-
-    speaker_label = [
-        "Speaker_A",
-        "Speaker_B",
-        "Speaker_A",
-        "Speaker_B",
-        "Speaker_B",
-        "Speaker_A",
-        "Speaker_A"
-    ]
-
+    content = [
+        ["speaker1",
+         "utterance1"],
+        ["speaker2",
+         "utterance2"]
+    ]  # fill in the content of conversation in this format
+    conversation, speaker_label = preprocess_conversation(content)
     y_pred_list, speaker_label_pred = predict_dialogue(conversation, speaker_label, "roberta-d8-u4-s1-21")
-    print(y_pred_list)
-    print(speaker_label_pred)
+    content_pred = get_conversation_w_speaker(conversation, speaker_label_pred)
