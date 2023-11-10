@@ -1,5 +1,6 @@
 import json
 import os
+import random
 import string
 
 import numpy as np
@@ -11,6 +12,28 @@ from tqdm import tqdm
 from transformers import RobertaTokenizer, RobertaForSequenceClassification, Trainer
 
 MAX_LENGTH = 512
+
+dir_dict = {"AMI audio": "/local/scratch/pwu54/Text-based SD Dataset/AMI/audio/",
+            "AMI gt": "/local/scratch/pwu54/Text-based SD Dataset/AMI/transcript/",
+            "AMI text": "/local/scratch/pwu54/Text-based SD Dataset/AMI/whisper_output/",
+            "CallFriend audio": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/audio/",
+            "CallFriend gt": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/transcript/",
+            "CallFriend text": "/local/scratch/pwu54/Text-based SD Dataset/CallFriend/whisper_output/",
+            "CallHome English audio": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/audio/",
+            "CallHome English gt": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/transcript/",
+            "CallHome English text": "/local/scratch/pwu54/Text-based SD Dataset/CallHome English/whisper_output/",
+            "CHiME-5 audio": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/audio/",
+            "CHiME-5 gt": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/transcript/",
+            "CHiME-5 text": "/local/scratch/pwu54/Text-based SD Dataset/CHiME-5/whisper_output/",
+            "DailyTalk audio": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/audio/",
+            "DailyTalk gt": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/transcript/",
+            "DailyTalk text": "/local/scratch/pwu54/Text-based SD Dataset/DailyTalk/whisper_output/",
+            "ICSI audio": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/audio/",
+            "ICSI gt": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/transcript/",
+            "ICSI text": "/local/scratch/pwu54/Text-based SD Dataset/ICSI/whisper_output/",
+            "SBCSAE audio": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/audio/",
+            "SBCSAE gt": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/transcript/",
+            "SBCSAE text": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/whisper_output/"}
 
 
 def compute_metrics(eval_pred):
@@ -48,6 +71,21 @@ def get_test_results(model_code: str):
             )
             results = trainer.evaluate(dataset_test)
             print(f"{model_code} {checkpoint} {results}")
+
+
+def get_train_val_test_filepath(gt_dir, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1, seed=42):
+    if train_ratio + val_ratio + test_ratio != 1.0:
+        raise ValueError("The sum of the ratios must equal 1.0")
+    random.seed(seed)
+    gt_filenames = os.listdir(gt_dir)
+    random.shuffle(gt_filenames)
+    total = len(gt_filenames)
+    train_index = int(train_ratio * total)
+    val_index = int((train_ratio + val_ratio) * total)
+    train_filepaths = [os.path.join(gt_dir, filename) for filename in gt_filenames[:train_index]]
+    val_filepaths = [os.path.join(gt_dir, filename) for filename in gt_filenames[train_index:val_index]]
+    test_filepaths = [os.path.join(gt_dir, filename) for filename in gt_filenames[val_index:]]
+    return train_filepaths, val_filepaths, test_filepaths
 
 
 def predict_single_input(tokenizer, model, input_text: str):
@@ -205,13 +243,74 @@ def preprocess_conversation(content, merge: bool = True, segment: bool = True):
     return text_list, speaker_list
 
 
+def get_conversation_metrics_exact(content: list, content_pred: list):
+    """If both conversation have exact same words and 2 speaker only,
+    both TDER and DF1 falls back to accuracy, which is 1 - WDER"""
+    n_incorrect_utterance = 0
+    n_total_utterance = 0
+    n_incorrect_token = 0
+    n_total_token = 0
+    for i in range(len(content)):
+        n_total_utterance += 1
+        n_total_token += len(content[i][1].split())
+        if content[i][0] != content_pred[i][0]:
+            n_incorrect_utterance += 1
+            n_incorrect_token += len(content[i][1].split())
+    n_correct_token = n_total_token - n_incorrect_token
+    n_correct_utterance = n_total_utterance - n_incorrect_utterance
+    df1 = n_correct_token / n_total_token  # also accuracy on token
+    tder = n_incorrect_token / n_total_token  # also wder
+    acc_utterance = n_correct_utterance / n_total_utterance
+    return df1, tder, acc_utterance
+
+
 if __name__ == "__main__":
-    content = [
-        ["speaker1",
-         "utterance1"],
-        ["speaker2",
-         "utterance2"]
-    ]  # fill in the content of conversation in this format
-    conversation, speaker_label = preprocess_conversation(content)
-    y_pred_list, speaker_label_pred = predict_dialogue(conversation, speaker_label, "roberta-d8-u4-s1-21")
-    content_pred = get_conversation_w_speaker(conversation, speaker_label_pred)
+    test_filepath_all = []
+    for gt_dir in ["AMI gt", "CallFriend gt", "CallHome English gt", "CHiME-5 gt", "DailyTalk gt", "ICSI gt", "SBCSAE gt"]:
+        gt_dir = dir_dict[gt_dir].replace("transcript", "whisper_align")
+        train_filepaths, val_filepaths, test_filepaths = get_train_val_test_filepath(gt_dir)
+        test_filepath_all.extend(test_filepaths)
+
+    tder_list = []
+    df1_list = []
+    acc_u_list = []
+    for filepath in test_filepath_all:
+        if os.path.splitext(filepath)[1] == ".json":
+            with open(filepath, 'r') as json_in:
+                content = json.load(json_in)  # fill in the content of conversation in this format
+        conversation, speaker_label = preprocess_conversation(content)
+        if len(set(speaker_label)) != 2:
+            continue
+        y_pred_list, speaker_label_pred = predict_dialogue(conversation, speaker_label, "roberta-d8-u4-s1-21")
+        content_pred = get_conversation_w_speaker(conversation, speaker_label_pred)
+        df1, tder, acc_u = get_conversation_metrics_exact(content, content_pred)
+        print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}")
+        tder_list.append(tder)
+        df1_list.append(df1)
+        acc_u_list.append(acc_u)
+    print(f"avg DF1: {sum(df1_list) / len(df1_list)}, avg TDER: {sum(tder_list) / len(tder_list)}, avg acc utterance: {sum(acc_u_list) / len(acc_u_list)}")
+
+    # randomly select first 2 conversation for observation
+    for gt_dir in ["AMI gt", "CallFriend gt", "CallHome English gt", "CHiME-5 gt", "DailyTalk gt", "ICSI gt", "SBCSAE gt"]:
+        gt_dir = dir_dict[gt_dir].replace("transcript", "whisper_align")
+        train_filepaths, val_filepaths, test_filepaths = get_train_val_test_filepath(gt_dir)
+        count = 0
+        for filepath in test_filepaths:
+            if os.path.splitext(filepath)[1] == ".json":
+                with open(filepath, 'r') as json_in:
+                    content = json.load(json_in)  # fill in the content of conversation in this format
+            conversation, speaker_label = preprocess_conversation(content)
+            if len(set(speaker_label)) != 2:
+                continue
+            y_pred_list, speaker_label_pred = predict_dialogue(conversation, speaker_label, "roberta-d8-u4-s1-21")
+            content_pred = get_conversation_w_speaker(conversation, speaker_label_pred)
+            for i in range(len(content)):
+                if i > 0:
+                    print(f"Speaker change: {y_pred_list[i - 1]}")
+                print(f"Correct: {speaker_label[i]} Predict: {speaker_label_pred[i]}")
+                print(conversation[i])
+            count += 1
+            if count >= 2:
+                break
+
+
