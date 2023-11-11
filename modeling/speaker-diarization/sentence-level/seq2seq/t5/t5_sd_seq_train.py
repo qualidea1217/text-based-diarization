@@ -31,7 +31,7 @@ def process_data_to_model_inputs(batch):
     return batch
 
 
-def preprocess_data(data_dir: str):
+def preprocess_data(data_dir: str, min_sentence_num: int = 1, max_sentence_num: int | float = float("inf")):
     with open(data_dir, 'r') as json_in:
         data_dict = json.load(json_in)
         conversations = data_dict["text_list"]
@@ -40,7 +40,9 @@ def preprocess_data(data_dir: str):
     output_list = []
     for conversation, speaker_label in tqdm(zip(conversations, speaker_labels), total=len(conversations)):
         for i in range(len(conversation)):
-            for j in range(i + 1, len(conversation) + 1):
+            for j in range(i + min_sentence_num, len(conversation) + 1):
+                if j - i > max_sentence_num:
+                    break
                 input_text = "".join([BEGIN_OF_SENTENCE + sentence for sentence in conversation[i:j]])
                 output_text = " ".join([str(speaker) for speaker in speaker_label[i:j]])
                 if len(tokenizer.encode(input_text)) > ENCODER_MAX_LENGTH:
@@ -51,12 +53,14 @@ def preprocess_data(data_dir: str):
 
 
 def preprocess_data_chunk(args):
-    conversations_chunk, speaker_labels_chunk = args
+    conversations_chunk, speaker_labels_chunk, min_sentence_num, max_sentence_num = args
     input_list = []
     output_list = []
     for conversation, speaker_label in tqdm(zip(conversations_chunk, speaker_labels_chunk), total=len(conversations_chunk)):
         for i in range(len(conversation)):
-            for j in range(i + 1, len(conversation) + 1):
+            for j in range(i + min_sentence_num, len(conversation) + 1):
+                if j - i > max_sentence_num:
+                    break
                 input_text = "".join([BEGIN_OF_SENTENCE + sentence for sentence in conversation[i:j]])
                 output_text = " ".join([str(speaker) for speaker in speaker_label[i:j]])
                 if len(tokenizer.encode(input_text)) > ENCODER_MAX_LENGTH:
@@ -66,7 +70,7 @@ def preprocess_data_chunk(args):
     return input_list, output_list
 
 
-def preprocess_data_parallel(data_dir: str):
+def preprocess_data_parallel(data_dir: str, min_sentence_num: int = 1, max_sentence_num: int | float = float("inf")):
     input_list = []
     output_list = []
     with open(data_dir, 'r') as json_in:
@@ -75,7 +79,10 @@ def preprocess_data_parallel(data_dir: str):
         speaker_labels = [speaker_to_ints(speaker_ids) for speaker_ids in data_dict["speaker_list"]]
     num_cores = 8
     chunk_size = len(conversations) // num_cores
-    args = [(conversations[i:i + chunk_size], speaker_labels[i:i + chunk_size]) for i in range(0, len(conversations), chunk_size)]
+    args = [
+        (conversations[i:i + chunk_size], speaker_labels[i:i + chunk_size], min_sentence_num, max_sentence_num)
+        for i in range(0, len(conversations), chunk_size)
+    ]
     with Pool(num_cores) as pool:
         results = pool.map(preprocess_data_chunk, args)
     for res in results:
@@ -87,7 +94,7 @@ def preprocess_data_parallel(data_dir: str):
 # Hyper parameters
 ENCODER_MAX_LENGTH = 512
 DECODER_MAX_LENGTH = 512
-BATCH_SIZE = 3
+BATCH_SIZE = 32
 EPOCHS = 3
 BEGIN_OF_SENTENCE = " <bos> "
 
@@ -100,12 +107,13 @@ if __name__ == "__main__":
     model.resize_token_embeddings(len(tokenizer))
 
     # Create dataset and dataloader
-    input_train, output_train = preprocess_data_parallel("/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent_2sp.json")
+    data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent_2sp.json"
+    input_train, output_train = preprocess_data(data_train_dir, 2, 4)
     dataset_train = Dataset.from_dict({"conversations": input_train, "speaker_labels": output_train})
     dataset_train = dataset_train.map(
         process_data_to_model_inputs,
         batched=True,
-        num_proc=8,
+        # num_proc=8,
         remove_columns=["conversations", "speaker_labels"],
     )
 
@@ -120,8 +128,8 @@ if __name__ == "__main__":
         num_train_epochs=EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
         optim="adafactor",
-        learning_rate=1e-6,
-        gradient_accumulation_steps=4,
+        learning_rate=1e-4,
+        # gradient_accumulation_steps=4,
         gradient_checkpointing=True,
         bf16=True,
         save_strategy="epoch"
@@ -136,7 +144,6 @@ if __name__ == "__main__":
 
     # 4. Train the Model
     trainer.train()
-
 
     # 5. Inference
     # def predict_speaker_sequence(model, tokenizer, conversation):
