@@ -1,79 +1,86 @@
 import json
 
-from datasets import Dataset
-from transformers import T5Tokenizer, T5ForConditionalGeneration, Seq2SeqTrainer, Seq2SeqTrainingArguments
+import torch
+from tqdm import tqdm
+from transformers import T5Tokenizer, T5ForConditionalGeneration
 
 
-# Hyper parameters
-ENCODER_MAX_LENGTH = 1024
-DECODER_MAX_LENGTH = 1024
-UNCHANGE_SPECIAL_TOKEN = " "
-CHANGE_SPECIAL_TOKEN = "<change>"
-BATCH_SIZE = 2
-EPOCHS = 5
-
-# Load tokenizer and model
-tokenizer = T5Tokenizer.from_pretrained('t5-3b', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)
-model = T5ForConditionalGeneration.from_pretrained("./results/t5-3b-1024/checkpoint-14726")
-model.to("cuda")
-
-# Add special tokens (optional)
-# tokenizer.add_special_tokens({"additional_special_tokens": CHANGE_SPECIAL_TOKEN})
-# model.resize_token_embeddings(len(tokenizer))
-
-# Load data
-with open("/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_utterance.json", 'r') as json_in:
-    data_dict = json.load(json_in)
-    conversations = data_dict["text_list"]
-    speaker_labels = data_dict["speaker_list"]
-
-# Add special token for marking change
-texts = []
-labels = []
-for i in range(len(conversations)):
-    conversation = conversations[i][0]
-    for j in range(1, len(conversations[i])):
-        if speaker_labels[i][j] == speaker_labels[i][j - 1]:
-            conversation += " " + UNCHANGE_SPECIAL_TOKEN + " " + conversations[i][j]
-        else:
-            conversation += CHANGE_SPECIAL_TOKEN + conversations[i][j]
-    labels.append(conversation)
-    texts.append(" ".join(conversations[i]))
-
-# Remove all data point with length larger than max length
-texts_filtered = []
-labels_filtered = []
-for i in range(len(texts)):
-    if len(tokenizer.encode(texts[i])) <= ENCODER_MAX_LENGTH and len(tokenizer.encode(labels[i])) <= DECODER_MAX_LENGTH:
-        texts_filtered.append(texts[i])
-        labels_filtered.append(labels[i])
-
-custom_dataset = Dataset.from_dict({"text": texts_filtered, "label": labels_filtered})
-custom_dataset = custom_dataset.train_test_split(test_size=0.2, shuffle=True, seed=42)
-dataset_test = custom_dataset["test"]
+def speaker_to_ints(input_list):
+    unique_dict = {}
+    output_list = []
+    for item in input_list:
+        if item not in unique_dict:
+            unique_dict[item] = len(unique_dict)
+        output_list.append(unique_dict[item])
+    return output_list
 
 
-def preprocess_function(batch):
-    inputs = tokenizer(batch["text"], padding="max_length", truncation=True, max_length=ENCODER_MAX_LENGTH)
-    outputs = tokenizer(batch["label"], padding="max_length", truncation=True, max_length=DECODER_MAX_LENGTH)
+def process_data_to_model_inputs(batch):
+    # tokenize the inputs and labels
+    inputs = tokenizer(batch["conversations"], padding="max_length", truncation=True, max_length=ENCODER_MAX_LENGTH)
+    outputs = tokenizer(batch["speaker_labels"], padding="max_length", truncation=True, max_length=DECODER_MAX_LENGTH)
     batch["input_ids"] = inputs.input_ids
     batch["attention_mask"] = inputs.attention_mask
     batch["labels"] = outputs.input_ids
     # We have to make sure that the PAD token is ignored
-    batch["labels"] = [[-100 if token == tokenizer.pad_token_id else token for token in labels]for labels in batch["labels"]]
+    batch["labels"] = [
+        [-100 if token == tokenizer.pad_token_id else token for token in labels]
+        for labels in batch["labels"]
+    ]
     return batch
 
 
-# Preprocess the dataset
-dataset_test = dataset_test.map(preprocess_function, batched=True, batch_size=BATCH_SIZE, remove_columns=["text", "label"])
-dataset_test.set_format(type="torch", columns=["input_ids", "attention_mask", "labels"], device="cuda")
+def preprocess_data(data_dir: str, min_sentence_num: int = 1, max_sentence_num: int | float = float("inf")):
+    with open(data_dir, 'r') as json_in:
+        data_dict = json.load(json_in)
+        conversations = data_dict["text_list"]
+        speaker_labels = [speaker_to_ints(speaker_ids) for speaker_ids in data_dict["speaker_list"]]
+    input_list = []
+    output_list = []
+    for conversation, speaker_label in tqdm(zip(conversations, speaker_labels), total=len(conversations)):
+        for i in range(len(conversation)):
+            for j in range(i + min_sentence_num, len(conversation) + 1):
+                if j - i > max_sentence_num:
+                    break
+                input_text = CHANGE_POINT.join([sentence for sentence in conversation[i:j]])
+                output_text = " ".join(["1" if speaker_label[i:j][k] != speaker_label[i:j][k - 1] else "0" for k in range(1, len(speaker_label[i:j]))])
+                if len(tokenizer.encode(input_text)) > ENCODER_MAX_LENGTH:
+                    break
+                input_list.append(input_text)
+                output_list.append(output_text)
+    return input_list, output_list
 
-# Give output from test
-for i in range(len(dataset_test["input_ids"])):
-    output = model.generate(input_ids=dataset_test['input_ids'][i].unsqueeze(0), attention_mask=dataset_test['attention_mask'][i].unsqueeze(0), max_length=DECODER_MAX_LENGTH)
-    prediction = tokenizer.decode(output[0], skip_special_tokens=True)
-    print(prediction)
-# outputs = model.generate(input_ids=dataset_test['input_ids'], attention_mask=dataset_test['attention_mask'], max_length=DECODER_MAX_LENGTH)
-# predictions = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
-# for i in range(len(predictions)):
-#     print(predictions[i])
+
+def predict_single_input(model, tokenizer, input_text):
+    input_ids = tokenizer.encode(input_text, return_tensors="pt").to("cuda")
+    with torch.no_grad():
+        output = model.generate(input_ids)
+    decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
+    print(decoded_output)
+    return list(map(int, decoded_output.split()))
+
+
+# Hyper parameters
+ENCODER_MAX_LENGTH = 512
+DECODER_MAX_LENGTH = 512
+BATCH_SIZE = 32
+EPOCHS = 3
+CHANGE_POINT = " <change> "
+
+if __name__ == "__main__":
+    # Load tokenizer and model
+    tokenizer = T5Tokenizer.from_pretrained("./tokenizer_bos")
+    model = T5ForConditionalGeneration.from_pretrained("./results/t5-3b/checkpoint-9494")
+    model = model.to("cuda")
+
+    conversation_test = ["Do you have any plans for the weekend?",
+                         "Not really, I was thinking of maybe catching a movie or going for a hike.",
+                         "How about you?", "A hike sounds great!",
+                         "There's a scenic trail nearby I've been wanting to explore.", "Would you like to join me?"]
+    for i in range(len(conversation_test)):
+        for j in range(i + 2, len(conversation_test) + 1):
+            if j - i > 4:
+                break
+            input_text = CHANGE_POINT.join([sentence for sentence in conversation_test[i:j]])
+            result = predict_single_input(model, tokenizer, input_text)
+            print(result)

@@ -11,7 +11,7 @@ def speaker_to_ints(input_list):
     output_list = []
     for item in input_list:
         if item not in unique_dict:
-            unique_dict[item] = len(unique_dict) + 1  # Add 1 here
+            unique_dict[item] = len(unique_dict)
         output_list.append(unique_dict[item])
     return output_list
 
