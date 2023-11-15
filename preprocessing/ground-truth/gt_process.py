@@ -373,8 +373,10 @@ def get_gt_scd_data(filepaths: list[str], output_json_name: str, merge: bool = T
         if os.path.splitext(filepath)[1] == ".json":
             with open(filepath, 'r') as json_in:
                 content = json.load(json_in)
-                text_list.append([utterance[1] for utterance in content if utterance[1] not in string.punctuation])
-                speaker_list.append([utterance[0] for utterance in content if utterance[1] not in string.punctuation])
+                text_list = [utterance[1] for utterance in content if
+                             utterance[1] not in string.punctuation and utterance[1] not in string.whitespace]
+                speaker_list = [utterance[0] for utterance in content if
+                                utterance[1] not in string.punctuation and utterance[1] not in string.whitespace]
     if max_speaker:
         text_list = [text_list[i] for i in range(len(text_list)) if len(set(speaker_list[i])) <= max_speaker]
         speaker_list = [speaker_list[i] for i in range(len(speaker_list)) if len(set(speaker_list[i])) <= max_speaker]
@@ -422,6 +424,12 @@ def get_gt_scd_data(filepaths: list[str], output_json_name: str, merge: bool = T
                 speaker_list_filter.append(speaker_list[i][j])
         text_list[i] = text_list_filter
         speaker_list[i] = speaker_list_filter
+
+    text_list_filter = [text_list[i] for i in range(len(text_list)) if
+                        text_list[i] not in string.punctuation and text_list[i] not in string.whitespace]
+    speaker_list_filter = [speaker_list[i] for i in range(len(speaker_list)) if
+                           text_list[i] not in string.punctuation and text_list[i] not in string.whitespace]
+    text_list, speaker_list = text_list_filter, speaker_list_filter
 
     with open(output_json_name, 'w') as json_out:
         json.dump({"text_list": text_list, "speaker_list": speaker_list}, json_out, indent=4)

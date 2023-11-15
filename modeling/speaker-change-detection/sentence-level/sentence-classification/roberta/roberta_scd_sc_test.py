@@ -207,8 +207,8 @@ def get_conversation_w_speaker(conversation: list[str], speaker_label: list):
 
 
 def preprocess_conversation(content, merge: bool = True, segment: bool = True):
-    text_list = [utterance[1] for utterance in content if utterance[1] not in string.punctuation]
-    speaker_list = [utterance[0] for utterance in content if utterance[1] not in string.punctuation]
+    text_list = [utterance[1] for utterance in content if utterance[1] not in string.punctuation and utterance[1] not in string.whitespace]
+    speaker_list = [utterance[0] for utterance in content if utterance[1] not in string.punctuation and utterance[1] not in string.whitespace]
     if merge:
         merged_texts = []
         merged_speakers = []
@@ -240,6 +240,10 @@ def preprocess_conversation(content, merge: bool = True, segment: bool = True):
                 speaker_ids.append(speaker_list[j])
         text_list = sentences
         speaker_list = speaker_ids
+
+    text_list_filter = [text_list[i] for i in range(len(text_list)) if text_list[i] not in string.punctuation and text_list[i] not in string.whitespace]
+    speaker_list_filter = [speaker_list[i] for i in range(len(speaker_list)) if text_list[i] not in string.punctuation and text_list[i] not in string.whitespace]
+    text_list, speaker_list = text_list_filter, speaker_list_filter
     return text_list, speaker_list
 
 

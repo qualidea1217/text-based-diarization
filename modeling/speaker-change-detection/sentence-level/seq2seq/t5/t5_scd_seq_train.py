@@ -6,6 +6,14 @@ from datasets import Dataset
 from transformers import T5Tokenizer, T5ForConditionalGeneration, Seq2SeqTrainer, Seq2SeqTrainingArguments
 
 
+# Hyper parameters
+ENCODER_MAX_LENGTH = 512
+DECODER_MAX_LENGTH = 512
+BATCH_SIZE = 32
+EPOCHS = 3
+CHANGE_POINT = " <change> "
+
+
 def speaker_to_ints(input_list):
     unique_dict = {}
     output_list = []
@@ -31,7 +39,7 @@ def process_data_to_model_inputs(batch):
     return batch
 
 
-def preprocess_data(data_dir: str, min_sentence_num: int = 1, max_sentence_num: int | float = float("inf")):
+def preprocess_data(data_dir: str, min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
     with open(data_dir, 'r') as json_in:
         data_dict = json.load(json_in)
         conversations = data_dict["text_list"]
@@ -44,7 +52,8 @@ def preprocess_data(data_dir: str, min_sentence_num: int = 1, max_sentence_num: 
                 if j - i > max_sentence_num:
                     break
                 input_text = CHANGE_POINT.join([sentence for sentence in conversation[i:j]])
-                output_text = " ".join(["1" if speaker_label[i:j][k] != speaker_label[i:j][k - 1] else "0" for k in range(1, len(speaker_label[i:j]))])
+                output_text = " ".join(["1" if speaker_label[i:j][k] != speaker_label[i:j][k - 1] else "0"
+                                        for k in range(1, len(speaker_label[i:j]))])
                 if len(tokenizer.encode(input_text)) > ENCODER_MAX_LENGTH:
                     break
                 input_list.append(input_text)
@@ -62,7 +71,8 @@ def preprocess_data_chunk(args):
                 if j - i > max_sentence_num:
                     break
                 input_text = CHANGE_POINT.join([sentence for sentence in conversation[i:j]])
-                output_text = " ".join(["1" if speaker_label[i:j][k] != speaker_label[i:j][k - 1] else "0" for k in range(1, len(speaker_label[i:j]))])
+                output_text = " ".join(["1" if speaker_label[i:j][k] != speaker_label[i:j][k - 1] else "0"
+                                        for k in range(1, len(speaker_label[i:j]))])
                 if len(tokenizer.encode(input_text)) > ENCODER_MAX_LENGTH:
                     break
                 input_list.append(input_text)
@@ -70,7 +80,7 @@ def preprocess_data_chunk(args):
     return input_list, output_list
 
 
-def preprocess_data_parallel(data_dir: str, min_sentence_num: int = 1, max_sentence_num: int | float = float("inf")):
+def preprocess_data_parallel(data_dir: str, min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
     input_list = []
     output_list = []
     with open(data_dir, 'r') as json_in:
@@ -91,18 +101,11 @@ def preprocess_data_parallel(data_dir: str, min_sentence_num: int = 1, max_sente
     return input_list, output_list
 
 
-# Hyper parameters
-ENCODER_MAX_LENGTH = 512
-DECODER_MAX_LENGTH = 512
-BATCH_SIZE = 32
-EPOCHS = 3
-CHANGE_POINT = " <change> "
-
 if __name__ == "__main__":
     # Load tokenizer and model
     tokenizer = T5Tokenizer.from_pretrained('t5-3b', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)
     tokenizer.add_special_tokens({"additional_special_tokens": [CHANGE_POINT]})
-    tokenizer.save_pretrained(f"./tokenizer_bos")
+    tokenizer.save_pretrained(f"./tokenizer_change")
     model = T5ForConditionalGeneration.from_pretrained('t5-3b', cache_dir="./models")
     model.resize_token_embeddings(len(tokenizer))
 
@@ -144,24 +147,3 @@ if __name__ == "__main__":
 
     # 4. Train the Model
     trainer.train()
-
-    # 5. Inference
-    # def predict_speaker_sequence(model, tokenizer, conversation):
-    #     input_text = " ".join(conversation)
-    #     input_ids = tokenizer.encode(input_text, return_tensors="pt").to("cuda")
-    #     output = model.generate(input_ids)
-    #     decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
-    #     print(decoded_output)
-    #     return list(map(int, decoded_output.split()))
-    #
-    #
-    # conversation_test = ["Hey, are you available?", "Yes, what's up?", "Let's discuss the project."]
-    # predicted_sequence = predict_speaker_sequence(model, tokenizer, conversation_test)
-    # print(predicted_sequence)
-
-    # Give output from test
-    # outputs = model.generate(input_ids=dataset_test['input_ids'], attention_mask=dataset_test['attention_mask'],
-    #                          max_length=DECODER_MAX_LENGTH)
-    # predictions = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
-    # for i in range(len(predictions)):
-    #     print(predictions[i])
