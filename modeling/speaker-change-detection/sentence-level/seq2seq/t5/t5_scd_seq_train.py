@@ -125,7 +125,7 @@ if __name__ == "__main__":
     model.resize_token_embeddings(len(tokenizer))
 
     # Create dataset and dataloader
-    data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json"
+    data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent_2sp.json"
     input_train, output_train = preprocess_data(data_train_dir, 2, 6)
     dataset_train = Dataset.from_dict({"conversations": input_train, "speaker_labels": output_train})
     dataset_train = dataset_train.map(
