@@ -181,7 +181,7 @@ def evaluate_conversation(model, tokenizer, conversation: list[str], speaker_lab
 if __name__ == "__main__":
     # Load tokenizer and model
     tokenizer = T5Tokenizer.from_pretrained("./tokenizer_bos")
-    model = T5ForConditionalGeneration.from_pretrained("./results/t5-3b/checkpoint-9494")
+    model = T5ForConditionalGeneration.from_pretrained("./results/t5-3b/checkpoint-18988")
     model = model.to("cuda")
 
     val_filepath_all = []
@@ -196,7 +196,7 @@ if __name__ == "__main__":
     tder_list = []
     df1_list = []
     acc_u_list = []
-    for filepath in test_filepath_all:
+    for filepath in val_filepath_all:
         if os.path.splitext(filepath)[1] == ".json":
             with open(filepath, 'r') as json_in:
                 content = json.load(json_in)  # fill in the content of conversation in this format

@@ -1,4 +1,5 @@
 import json
+import string
 from multiprocessing import Pool
 from tqdm import tqdm
 
@@ -47,8 +48,15 @@ def preprocess_data(data_dir: str, min_sentence_num: int = 1, max_sentence_num: 
     input_list = []
     output_list = []
     for conversation, speaker_label in tqdm(zip(conversations, speaker_labels), total=len(conversations)):
+        conversation_filter = [conversation[i] for i in range(len(conversation)) if
+                               conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
+        speaker_label_filter = [speaker_label[i] for i in range(len(speaker_label)) if
+                                conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
+        conversation, speaker_label = conversation_filter, speaker_label_filter
         for i in range(len(conversation)):
             for j in range(i + min_sentence_num, len(conversation) + 1):
+                if len(set(speaker_label[i:j])) > 2:
+                    break
                 if j - i > max_sentence_num:
                     break
                 input_text = "".join([BEGIN_OF_SENTENCE + sentence for sentence in conversation[i:j]])
@@ -65,8 +73,15 @@ def preprocess_data_chunk(args):
     input_list = []
     output_list = []
     for conversation, speaker_label in tqdm(zip(conversations_chunk, speaker_labels_chunk), total=len(conversations_chunk)):
+        conversation_filter = [conversation[i] for i in range(len(conversation)) if
+                               conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
+        speaker_label_filter = [speaker_label[i] for i in range(len(speaker_label)) if
+                                conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
+        conversation, speaker_label = conversation_filter, speaker_label_filter
         for i in range(len(conversation)):
             for j in range(i + min_sentence_num, len(conversation) + 1):
+                if len(set(speaker_label[i:j])) > 2:
+                    break
                 if j - i > max_sentence_num:
                     break
                 input_text = "".join([BEGIN_OF_SENTENCE + sentence for sentence in conversation[i:j]])

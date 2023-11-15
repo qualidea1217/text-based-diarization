@@ -1,4 +1,5 @@
 import json
+import string
 from multiprocessing import Pool
 from tqdm import tqdm
 
@@ -47,8 +48,15 @@ def preprocess_data(data_dir: str, min_sentence_num: int = 2, max_sentence_num: 
     input_list = []
     output_list = []
     for conversation, speaker_label in tqdm(zip(conversations, speaker_labels), total=len(conversations)):
+        conversation_filter = [conversation[i] for i in range(len(conversation)) if
+                            conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
+        speaker_label_filter = [speaker_label[i] for i in range(len(speaker_label)) if
+                               conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
+        conversation, speaker_label = conversation_filter, speaker_label_filter
         for i in range(len(conversation)):
             for j in range(i + min_sentence_num, len(conversation) + 1):
+                if len(set(speaker_label[i:j])) > 2:
+                    break
                 if j - i > max_sentence_num:
                     break
                 input_text = CHANGE_POINT.join([sentence for sentence in conversation[i:j]])
@@ -66,8 +74,15 @@ def preprocess_data_chunk(args):
     input_list = []
     output_list = []
     for conversation, speaker_label in tqdm(zip(conversations_chunk, speaker_labels_chunk), total=len(conversations_chunk)):
+        conversation_filter = [conversation[i] for i in range(len(conversation)) if
+                               conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
+        speaker_label_filter = [speaker_label[i] for i in range(len(speaker_label)) if
+                                conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
+        conversation, speaker_label = conversation_filter, speaker_label_filter
         for i in range(len(conversation)):
             for j in range(i + min_sentence_num, len(conversation) + 1):
+                if len(set(speaker_label[i:j])) > 2:
+                    break
                 if j - i > max_sentence_num:
                     break
                 input_text = CHANGE_POINT.join([sentence for sentence in conversation[i:j]])
@@ -110,8 +125,8 @@ if __name__ == "__main__":
     model.resize_token_embeddings(len(tokenizer))
 
     # Create dataset and dataloader
-    data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent_2sp.json"
-    input_train, output_train = preprocess_data(data_train_dir, 2, 4)
+    data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent.json"
+    input_train, output_train = preprocess_data(data_train_dir, 2, 6)
     dataset_train = Dataset.from_dict({"conversations": input_train, "speaker_labels": output_train})
     dataset_train = dataset_train.map(
         process_data_to_model_inputs,
@@ -127,7 +142,7 @@ if __name__ == "__main__":
 
     # 3. Define Training Arguments and Initialize Trainer
     training_args = Seq2SeqTrainingArguments(
-        output_dir='./results/t5-3b',
+        output_dir='./results/t5-3b-d7-scd-26',
         num_train_epochs=EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
         optim="adafactor",

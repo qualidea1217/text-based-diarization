@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=t5_scd_seq_train
-#SBATCH --output=t5_scd_seq_train_out.txt
+#SBATCH --job-name=t5-3b-d7-scd-26
+#SBATCH --output=t5-3b-d7-scd-26.txt
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 
