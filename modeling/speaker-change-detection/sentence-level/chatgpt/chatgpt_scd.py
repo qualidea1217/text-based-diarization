@@ -1,13 +1,15 @@
+import ast
 import json
 import os
 import random
 import string
 
+import openai
 import spacy
-import torch
-from tqdm import tqdm
-from transformers import T5Tokenizer, T5ForConditionalGeneration
 
+openai.api_key = "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"  # do not upload this to github
+model = "gpt-4-1106-preview"
+# model = "gpt-3.5-turbo-1106"
 
 dir_dict = {"AMI audio": "/local/scratch/pwu54/Text-based SD Dataset/AMI/audio/",
             "AMI gt": "/local/scratch/pwu54/Text-based SD Dataset/AMI/transcript/",
@@ -142,16 +144,44 @@ def get_conversation_metrics_exact(content: list, content_pred: list):
     return df1, tder, acc_utterance
 
 
-def predict_single_input(model, tokenizer, input_text):
-    input_ids = tokenizer.encode(input_text, return_tensors="pt").to("cuda")
-    with torch.no_grad():
-        output = model.generate(input_ids)
-    decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
-    return list(map(int, decoded_output.split()))
+def openai_chat(prompt: str) -> str:
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant who knows how to detect speaker change between sentences."},
+            {"role": "user", "content": prompt}
+        ]
+    )
+    output_str = response["choices"][0]["message"]["content"]
+    return output_str
 
 
-def predict_conversation(model, tokenizer, conversation: list[str],
-                         min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
+def predict_single_input(input_text: str):
+    prompt = f"""For the following list of sentences, please generate a list of 0 and 1 to classify whether the speaker 
+    has changed at each point of {CHANGE_POINT}. 0 for unchange, 1 for change. Return only python list. 
+    Sentences to be predicted: {input_text}"""
+    output_list = None
+    for _ in range(3):
+        try:
+            output_str = openai_chat(prompt)
+            output_list = ast.literal_eval(output_str)
+            break
+        except:
+            continue
+    return output_list
+
+
+def evaluate_conversation(conversation: list[str], speaker_label: list, min_sentence_num: int = 2,
+                          max_sentence_num: int | float = float("inf")):
+    speaker_change_pred = predict_conversation(conversation, min_sentence_num, max_sentence_num)
+    speaker_label_pred = recreate_speaker_label_2sp(conversation, speaker_change_pred, speaker_label)
+    content = get_conversation_w_speaker(conversation, speaker_label)
+    content_pred = get_conversation_w_speaker(conversation, speaker_label_pred)
+    df1, tder, acc_utterance = get_conversation_metrics_exact(content, content_pred)
+    return df1, tder, acc_utterance
+
+
+def predict_conversation(conversation: list[str], min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
     """
     Using sliding window to predict each point of change for multiple times and do majority vote
     max_sentence_num must be even number so that for each
@@ -161,7 +191,7 @@ def predict_conversation(model, tokenizer, conversation: list[str],
         begin = i - max_sentence_num if i - max_sentence_num >= 0 else 0
         end = i if i <= len(conversation) else len(conversation)
         single_input = CHANGE_POINT.join([sentence for sentence in conversation[begin:end]])
-        single_output = predict_single_input(model, tokenizer, single_input)
+        single_output = predict_single_input(single_input)
         try:
             for j in range(end - begin - 1):
                 speaker_change_pred[j + begin] += single_output[j]
@@ -173,22 +203,7 @@ def predict_conversation(model, tokenizer, conversation: list[str],
     return speaker_change_pred
 
 
-def evaluate_conversation(model, tokenizer, conversation: list[str], speaker_label: list,
-                          min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
-    speaker_change_pred = predict_conversation(model, tokenizer, conversation, min_sentence_num, max_sentence_num)
-    speaker_label_pred = recreate_speaker_label_2sp(conversation, speaker_change_pred, speaker_label)
-    content = get_conversation_w_speaker(conversation, speaker_label)
-    content_pred = get_conversation_w_speaker(conversation, speaker_label_pred)
-    df1, tder, acc_utterance = get_conversation_metrics_exact(content, content_pred)
-    return df1, tder, acc_utterance
-
-
 if __name__ == "__main__":
-    # Load tokenizer and model
-    tokenizer = T5Tokenizer.from_pretrained("./tokenizer_bos")
-    model = T5ForConditionalGeneration.from_pretrained("./results/t5-3b/checkpoint-18988")
-    model = model.to("cuda")
-
     val_filepath_all = []
     test_filepath_all = []
     for gt_dir in ["AMI gt", "CallFriend gt", "CallHome English gt", "CHiME-5 gt", "DailyTalk gt", "ICSI gt",
@@ -201,14 +216,14 @@ if __name__ == "__main__":
     tder_list = []
     df1_list = []
     acc_u_list = []
-    for filepath in val_filepath_all:
+    for filepath in test_filepath_all:
         if os.path.splitext(filepath)[1] == ".json":
             with open(filepath, 'r') as json_in:
                 content = json.load(json_in)  # fill in the content of conversation in this format
         conversation, speaker_label = preprocess_conversation(content)
         if len(set(speaker_label)) != 2:
             continue
-        df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, 2, 4)
+        df1, tder, acc_u = evaluate_conversation(conversation, speaker_label, 2, 4)
         print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}")
         tder_list.append(tder)
         df1_list.append(df1)
