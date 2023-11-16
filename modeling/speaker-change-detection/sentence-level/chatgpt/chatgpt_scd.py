@@ -7,7 +7,7 @@ import string
 import openai
 import spacy
 
-openai.api_key = "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"  # do not upload this to github
+openai.api_key = ""  # do not upload this to github
 model = "gpt-4-1106-preview"
 # model = "gpt-3.5-turbo-1106"
 
@@ -161,7 +161,7 @@ def predict_single_input(input_text: str):
     has changed at each point of {CHANGE_POINT}. 0 for unchange, 1 for change. Return only python list. 
     Sentences to be predicted: {input_text}"""
     output_list = None
-    for _ in range(3):
+    for _ in range(10):
         try:
             output_str = openai_chat(prompt)
             output_list = ast.literal_eval(output_str)
