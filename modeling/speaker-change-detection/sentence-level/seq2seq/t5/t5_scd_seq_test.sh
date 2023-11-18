@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=t5_scd_seq_test
 #SBATCH --output=t5_scd_seq_test_out.txt
+#SBATCH --mem=32G
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 

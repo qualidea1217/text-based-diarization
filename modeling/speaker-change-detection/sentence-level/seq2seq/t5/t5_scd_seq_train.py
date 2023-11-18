@@ -10,7 +10,7 @@ from transformers import T5Tokenizer, T5ForConditionalGeneration, Seq2SeqTrainer
 # Hyper parameters
 ENCODER_MAX_LENGTH = 512
 DECODER_MAX_LENGTH = 512
-BATCH_SIZE = 32
+BATCH_SIZE = 4
 EPOCHS = 3
 CHANGE_POINT = " <change> "
 
@@ -118,9 +118,10 @@ def preprocess_data_parallel(data_dir: str, min_sentence_num: int = 2, max_sente
 
 if __name__ == "__main__":
     # Load tokenizer and model
-    tokenizer = T5Tokenizer.from_pretrained('t5-3b', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)
-    tokenizer.add_special_tokens({"additional_special_tokens": [CHANGE_POINT]})
-    tokenizer.save_pretrained(f"./tokenizer_change")
+    # tokenizer = T5Tokenizer.from_pretrained('t5-3b', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)
+    # tokenizer.add_special_tokens({"additional_special_tokens": [CHANGE_POINT]})
+    # tokenizer.save_pretrained("./tokenizer_change")
+    tokenizer = T5Tokenizer.from_pretrained("./tokenizer_change")
     model = T5ForConditionalGeneration.from_pretrained('t5-3b', cache_dir="./models")
     model.resize_token_embeddings(len(tokenizer))
 
@@ -142,13 +143,13 @@ if __name__ == "__main__":
 
     # 3. Define Training Arguments and Initialize Trainer
     training_args = Seq2SeqTrainingArguments(
-        output_dir='./results/t5-3b-d7-scd-26',
+        output_dir='./results/t5-3b-d7-scd-26-3e5',
         num_train_epochs=EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
         optim="adafactor",
-        learning_rate=1e-4,
-        # gradient_accumulation_steps=4,
-        gradient_checkpointing=True,
+        learning_rate=3e-5,
+        gradient_accumulation_steps=8,
+        # gradient_checkpointing=True,
         bf16=True,
         save_strategy="epoch"
     )

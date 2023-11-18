@@ -185,8 +185,8 @@ def evaluate_conversation(model, tokenizer, conversation: list[str], speaker_lab
 
 if __name__ == "__main__":
     # Load tokenizer and model
-    tokenizer = T5Tokenizer.from_pretrained("./tokenizer_bos")
-    model = T5ForConditionalGeneration.from_pretrained("./results/t5-3b/checkpoint-18988")
+    tokenizer = T5Tokenizer.from_pretrained("./tokenizer_change")
+    model = T5ForConditionalGeneration.from_pretrained("./results/t5-3b-d7-scd-26/checkpoint-15478")
     model = model.to("cuda")
 
     val_filepath_all = []
@@ -208,7 +208,7 @@ if __name__ == "__main__":
         conversation, speaker_label = preprocess_conversation(content)
         if len(set(speaker_label)) != 2:
             continue
-        df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, 2, 4)
+        df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, 2, 6)
         print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}")
         tder_list.append(tder)
         df1_list.append(df1)
