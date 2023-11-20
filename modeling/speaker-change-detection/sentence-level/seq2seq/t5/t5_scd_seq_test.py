@@ -183,12 +183,8 @@ def evaluate_conversation(model, tokenizer, conversation: list[str], speaker_lab
     return df1, tder, acc_utterance
 
 
-if __name__ == "__main__":
-    # Load tokenizer and model
-    tokenizer = T5Tokenizer.from_pretrained("./tokenizer_change")
-    model = T5ForConditionalGeneration.from_pretrained("./results/t5-3b-d7-scd-26/checkpoint-15478")
-    model = model.to("cuda")
-
+def evaluate_checkpoint(checkpoint: str):
+    # load data
     val_filepath_all = []
     test_filepath_all = []
     for gt_dir in ["AMI gt", "CallFriend gt", "CallHome English gt", "CHiME-5 gt", "DailyTalk gt", "ICSI gt",
@@ -197,6 +193,11 @@ if __name__ == "__main__":
         train_filepaths, val_filepaths, test_filepaths = get_train_val_test_filepath(gt_dir)
         val_filepath_all.extend(val_filepaths)
         test_filepath_all.extend(test_filepaths)
+
+    # Load tokenizer and model
+    tokenizer = T5Tokenizer.from_pretrained("./tokenizer_change")
+    model = T5ForConditionalGeneration.from_pretrained(checkpoint)
+    model = model.to("cuda")
 
     tder_list = []
     df1_list = []
@@ -213,4 +214,36 @@ if __name__ == "__main__":
         tder_list.append(tder)
         df1_list.append(df1)
         acc_u_list.append(acc_u)
-    print(f"avg DF1: {sum(df1_list) / len(df1_list)}, avg TDER: {sum(tder_list) / len(tder_list)}, avg acc utterance: {sum(acc_u_list) / len(acc_u_list)}")
+    print("\n==================================================================================")
+    print(f"Checkpoint: {checkpoint}")
+    print(f"Val avg DF1: {sum(df1_list) / len(df1_list)}, Val avg TDER: {sum(tder_list) / len(tder_list)}, Val avg acc utterance: {sum(acc_u_list) / len(acc_u_list)}")
+    print("==================================================================================\n")
+
+    tder_list = []
+    df1_list = []
+    acc_u_list = []
+    for filepath in test_filepath_all:
+        if os.path.splitext(filepath)[1] == ".json":
+            with open(filepath, 'r') as json_in:
+                content = json.load(json_in)  # fill in the content of conversation in this format
+        conversation, speaker_label = preprocess_conversation(content)
+        if len(set(speaker_label)) != 2:
+            continue
+        df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, 2, 6)
+        print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}")
+        tder_list.append(tder)
+        df1_list.append(df1)
+        acc_u_list.append(acc_u)
+    print("\n==================================================================================")
+    print(f"Checkpoint: {checkpoint}")
+    print(f"Test avg DF1: {sum(df1_list) / len(df1_list)}, Test avg TDER: {sum(tder_list) / len(tder_list)}, Test avg acc utterance: {sum(acc_u_list) / len(acc_u_list)}")
+    print("==================================================================================\n")
+
+
+if __name__ == "__main__":
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-1e5/checkpoint-15477")
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-1e5/checkpoint-30955")
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-1e5/checkpoint-46431")
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-15477")
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-30955")
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-46431")
