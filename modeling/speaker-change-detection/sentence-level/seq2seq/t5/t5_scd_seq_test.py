@@ -183,7 +183,7 @@ def evaluate_conversation(model, tokenizer, conversation: list[str], speaker_lab
     return df1, tder, acc_utterance
 
 
-def evaluate_checkpoint(checkpoint: str):
+def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
     # load data
     val_filepath_all = []
     test_filepath_all = []
@@ -209,7 +209,7 @@ def evaluate_checkpoint(checkpoint: str):
         conversation, speaker_label = preprocess_conversation(content)
         if len(set(speaker_label)) != 2:
             continue
-        df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, 2, 6)
+        df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, min_sentence_num, max_sentence_num)
         print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}")
         tder_list.append(tder)
         df1_list.append(df1)
@@ -229,7 +229,7 @@ def evaluate_checkpoint(checkpoint: str):
         conversation, speaker_label = preprocess_conversation(content)
         if len(set(speaker_label)) != 2:
             continue
-        df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, 2, 6)
+        df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, min_sentence_num, max_sentence_num)
         print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}")
         tder_list.append(tder)
         df1_list.append(df1)
@@ -241,9 +241,9 @@ def evaluate_checkpoint(checkpoint: str):
 
 
 if __name__ == "__main__":
-    evaluate_checkpoint("./results/t5-3b-d7-scd-26-1e5/checkpoint-15477")
-    evaluate_checkpoint("./results/t5-3b-d7-scd-26-1e5/checkpoint-30955")
-    evaluate_checkpoint("./results/t5-3b-d7-scd-26-1e5/checkpoint-46431")
-    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-15477")
-    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-30955")
-    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-46431")
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-21190", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-42380", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-63570", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-21190", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-42380", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-63570", 2, 8)
