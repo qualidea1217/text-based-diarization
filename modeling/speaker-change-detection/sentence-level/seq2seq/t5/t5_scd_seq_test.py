@@ -142,7 +142,7 @@ def get_conversation_metrics_exact(content: list, content_pred: list):
     return df1, tder, acc_utterance
 
 
-def predict_single_input(model, tokenizer, input_text):
+def predict_single_input(model, tokenizer, input_text) -> list[int]:
     input_ids = tokenizer.encode(input_text, return_tensors="pt").to("cuda")
     with torch.no_grad():
         output = model.generate(input_ids)
@@ -170,6 +170,20 @@ def predict_conversation(model, tokenizer, conversation: list[str],
             print(single_output)
             exit()
     speaker_change_pred = [0 if change < max_sentence_num / 2 else 1 for change in speaker_change_pred]
+    return speaker_change_pred
+
+
+def predict_conversation_single(model, tokenizer, conversation: list[str], max_sentence_num: int | float = float("inf")):
+    """
+    Only predict the last sentence change speaker or not compare to previous sentence.
+    """
+    speaker_change_pred = []
+    for i in range(1, len(conversation)):
+        begin = i - max_sentence_num if i - max_sentence_num >= 0 else 0
+        single_input = CHANGE_POINT.join([sentence for sentence in conversation[begin:i]])
+        single_input = " ".join(single_input.split(CHANGE_POINT)[:-1]) + CHANGE_POINT + single_input.split(CHANGE_POINT)[-1]
+        single_output = predict_single_input(model, tokenizer, single_input)
+        speaker_change_pred.append(single_output[0])
     return speaker_change_pred
 
 
@@ -241,9 +255,6 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
 
 
 if __name__ == "__main__":
-    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-21190", 2, 8)
-    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-42380", 2, 8)
-    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-63570", 2, 8)
-    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-21190", 2, 8)
-    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-42380", 2, 8)
-    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-63570", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-1e5/checkpoint-21190", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-1e5/checkpoint-42380", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-1e5/checkpoint-63570", 2, 8)

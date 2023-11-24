@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
     # Create dataset and dataloader
     data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent_2sp.json"
-    input_train, output_train = preprocess_data_single_pred(data_train_dir, 2, 4)
+    input_train, output_train = preprocess_data_single_pred(data_train_dir, 2, 6)
     dataset_train = Dataset.from_dict({"conversations": input_train, "speaker_labels": output_train})
     dataset_train = dataset_train.map(
         process_data_to_model_inputs,
@@ -127,11 +127,11 @@ if __name__ == "__main__":
 
     # 3. Define Training Arguments and Initialize Trainer
     training_args = Seq2SeqTrainingArguments(
-        output_dir='./results/t5-3b-d7-scd-24-1-3e5',
+        output_dir='./results/t5-3b-d7-scd-26-1-2e5',
         num_train_epochs=EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
         optim="adafactor",
-        learning_rate=3e-5,
+        learning_rate=2e-5,
         gradient_accumulation_steps=8,
         # gradient_checkpointing=True,
         bf16=True,
