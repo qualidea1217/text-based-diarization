@@ -255,6 +255,6 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
 
 
 if __name__ == "__main__":
-    evaluate_checkpoint("./results/t5-3b-d7-scd-28-1e5/checkpoint-21190", 2, 8)
-    evaluate_checkpoint("./results/t5-3b-d7-scd-28-1e5/checkpoint-42380", 2, 8)
-    evaluate_checkpoint("./results/t5-3b-d7-scd-28-1e5/checkpoint-63570", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-3e5/checkpoint-9494", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-3e5/checkpoint-18988", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-3e5/checkpoint-28482", 2, 4)

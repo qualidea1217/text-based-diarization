@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=t5-3b-d7-scd-26-1-2e5
-#SBATCH --output=t5-3b-d7-scd-26-1-2e5.txt
+#SBATCH --job-name=t5-3b-d7-scd-24-2e5
+#SBATCH --output=t5-3b-d7-scd-24-2e5.txt
 #SBATCH --mem=32G
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
