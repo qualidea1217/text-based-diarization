@@ -216,6 +216,8 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
     tder_list = []
     df1_list = []
     acc_u_list = []
+    sen_num_list = []
+    word_num_list = []
     for filepath in val_filepath_all:
         if os.path.splitext(filepath)[1] == ".json":
             with open(filepath, 'r') as json_in:
@@ -224,18 +226,34 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
         if len(set(speaker_label)) != 2:
             continue
         df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, min_sentence_num, max_sentence_num)
-        print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}")
+        sen_num = len(conversation)
+        word_num = sum([len(sentence.split()) for sentence in conversation])
+        print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}, sentence num: {sen_num} word num: {word_num}")
         tder_list.append(tder)
         df1_list.append(df1)
         acc_u_list.append(acc_u)
+        sen_num_list.append(sen_num)
+        word_num_list.append(word_num)
     print("\n==================================================================================")
     print(f"Checkpoint: {checkpoint}")
     print(f"Val avg DF1: {sum(df1_list) / len(df1_list)}, Val avg TDER: {sum(tder_list) / len(tder_list)}, Val avg acc utterance: {sum(acc_u_list) / len(acc_u_list)}")
+    total_weights = sum(sen_num_list)
+    weighted_tder_sum = sum(t * w for t, w in zip(tder_list, sen_num_list))
+    weighted_df1_sum = sum(d * w for d, w in zip(df1_list, sen_num_list))
+    weighted_acc_u_sum = sum(a * w for a, w in zip(acc_u_list, sen_num_list))
+    print(f"(Sentence-level Weighted) Val avg DF1: {weighted_df1_sum / total_weights}, Val avg TDER: {weighted_tder_sum / total_weights}, Val avg acc utterance: {weighted_acc_u_sum / total_weights}")
+    total_weights = sum(word_num_list)
+    weighted_tder_sum = sum(t * w for t, w in zip(tder_list, word_num_list))
+    weighted_df1_sum = sum(d * w for d, w in zip(df1_list, word_num_list))
+    weighted_acc_u_sum = sum(a * w for a, w in zip(acc_u_list, word_num_list))
+    print(f"(Word-level Weighted) Val avg DF1: {weighted_df1_sum / total_weights}, Val avg TDER: {weighted_tder_sum / total_weights}, Val avg acc utterance: {weighted_acc_u_sum / total_weights}")
     print("==================================================================================\n")
 
     tder_list = []
     df1_list = []
     acc_u_list = []
+    sen_num_list = []
+    word_num_list = []
     for filepath in test_filepath_all:
         if os.path.splitext(filepath)[1] == ".json":
             with open(filepath, 'r') as json_in:
@@ -244,17 +262,57 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
         if len(set(speaker_label)) != 2:
             continue
         df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, min_sentence_num, max_sentence_num)
-        print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}")
+        sen_num = len(conversation)
+        word_num = sum([len(sentence.split()) for sentence in conversation])
+        print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}, sentence num: {sen_num} word num: {word_num}")
         tder_list.append(tder)
         df1_list.append(df1)
         acc_u_list.append(acc_u)
+        sen_num_list.append(sen_num)
+        word_num_list.append(word_num)
     print("\n==================================================================================")
     print(f"Checkpoint: {checkpoint}")
     print(f"Test avg DF1: {sum(df1_list) / len(df1_list)}, Test avg TDER: {sum(tder_list) / len(tder_list)}, Test avg acc utterance: {sum(acc_u_list) / len(acc_u_list)}")
+    total_weights = sum(sen_num_list)
+    weighted_tder_sum = sum(t * w for t, w in zip(tder_list, sen_num_list))
+    weighted_df1_sum = sum(d * w for d, w in zip(df1_list, sen_num_list))
+    weighted_acc_u_sum = sum(a * w for a, w in zip(acc_u_list, sen_num_list))
+    print(f"(Sentence-level Weighted) Test avg DF1: {weighted_df1_sum / total_weights}, Test avg TDER: {weighted_tder_sum / total_weights}, Test avg acc utterance: {weighted_acc_u_sum / total_weights}")
+    total_weights = sum(word_num_list)
+    weighted_tder_sum = sum(t * w for t, w in zip(tder_list, word_num_list))
+    weighted_df1_sum = sum(d * w for d, w in zip(df1_list, word_num_list))
+    weighted_acc_u_sum = sum(a * w for a, w in zip(acc_u_list, word_num_list))
+    print(f"(Word-level Weighted) Test avg DF1: {weighted_df1_sum / total_weights}, Test avg TDER: {weighted_tder_sum / total_weights}, Test avg acc utterance: {weighted_acc_u_sum / total_weights}")
     print("==================================================================================\n")
 
 
 if __name__ == "__main__":
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-2e5/checkpoint-9494", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-2e5/checkpoint-18988", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-2e5/checkpoint-28482", 2, 4)
     evaluate_checkpoint("./results/t5-3b-d7-scd-24-3e5/checkpoint-9494", 2, 4)
     evaluate_checkpoint("./results/t5-3b-d7-scd-24-3e5/checkpoint-18988", 2, 4)
     evaluate_checkpoint("./results/t5-3b-d7-scd-24-3e5/checkpoint-28482", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-4e5/checkpoint-9494", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-4e5/checkpoint-18988", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-4e5/checkpoint-28482", 2, 4)
+
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-1e5/checkpoint-15477", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-1e5/checkpoint-30955", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-1e5/checkpoint-46431", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-2e5/checkpoint-15477", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-2e5/checkpoint-30955", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-2e5/checkpoint-46431", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-15477", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-30955", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-46431", 2, 6)
+
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-1e5/checkpoint-21190", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-1e5/checkpoint-42380", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-1e5/checkpoint-63570", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-21190", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-42380", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-63570", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-21190", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-42380", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-63570", 2, 8)
