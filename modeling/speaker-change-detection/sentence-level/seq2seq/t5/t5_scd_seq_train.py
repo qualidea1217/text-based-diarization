@@ -6,9 +6,9 @@ from tqdm import tqdm
 from transformers import T5Tokenizer, T5ForConditionalGeneration, Seq2SeqTrainer, Seq2SeqTrainingArguments
 
 # Hyper parameters
-ENCODER_MAX_LENGTH = 512
-DECODER_MAX_LENGTH = 512
-BATCH_SIZE = 4
+ENCODER_MAX_LENGTH = 256
+DECODER_MAX_LENGTH = 64
+BATCH_SIZE = 8
 EPOCHS = 3
 CHANGE_POINT = " <change> "
 
@@ -100,16 +100,16 @@ def preprocess_data_single_pred(data_dir: str, min_sentence_num: int = 2, max_se
 
 if __name__ == "__main__":
     # Load tokenizer and model
-    # tokenizer = T5Tokenizer.from_pretrained('t5-3b', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)
+    # tokenizer = T5Tokenizer.from_pretrained('t5-11b', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)
     # tokenizer.add_special_tokens({"additional_special_tokens": [CHANGE_POINT]})
-    # tokenizer.save_pretrained("./tokenizer_change")
+    # tokenizer.save_pretrained("./tokenizer_change_11b")
     tokenizer = T5Tokenizer.from_pretrained("./tokenizer_change")
-    model = T5ForConditionalGeneration.from_pretrained('t5-3b', cache_dir="./models")
+    model = T5ForConditionalGeneration.from_pretrained('t5-11b', cache_dir="./models")
     model.resize_token_embeddings(len(tokenizer))
 
     # Create dataset and dataloader
     data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent_2sp.json"
-    input_train, output_train = preprocess_data(data_train_dir, 2, 4)
+    input_train, output_train = preprocess_data(data_train_dir, 2, 6)
     dataset_train = Dataset.from_dict({"conversations": input_train, "speaker_labels": output_train})
     dataset_train = dataset_train.map(
         process_data_to_model_inputs,
@@ -125,15 +125,16 @@ if __name__ == "__main__":
 
     # 3. Define Training Arguments and Initialize Trainer
     training_args = Seq2SeqTrainingArguments(
-        output_dir='./results/t5-3b-d7-scd-24-2e5',
+        output_dir='./results/t5-11b-d7-scd-26-3e5',
         num_train_epochs=EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
-        optim="adafactor",
-        learning_rate=2e-5,
-        gradient_accumulation_steps=8,
+        optim="adamw_apex_fused",
+        learning_rate=3e-5,
+        # gradient_accumulation_steps=4,
         # gradient_checkpointing=True,
         bf16=True,
-        save_strategy="epoch"
+        save_strategy="epoch",
+        deepspeed="./deepspeed_config_zero2_offloadopt.json",
     )
 
     trainer = Seq2SeqTrainer(

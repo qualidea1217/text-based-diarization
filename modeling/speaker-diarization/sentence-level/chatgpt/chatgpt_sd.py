@@ -184,6 +184,8 @@ if __name__ == "__main__":
     tder_list = []
     df1_list = []
     acc_u_list = []
+    sen_num_list = []
+    word_num_list = []
     for filepath in test_filepath_all:
         if os.path.splitext(filepath)[1] == ".json":
             with open(filepath, 'r') as json_in:
@@ -192,8 +194,24 @@ if __name__ == "__main__":
         if len(set(speaker_label)) != 2:
             continue
         df1, tder, acc_u = evaluate_conversation(conversation, speaker_label)
-        print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}")
+        sen_num = len(conversation)
+        word_num = sum([len(sentence.split()) for sentence in conversation])
+        print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}, sentence num: {sen_num} word num: {word_num}")
         tder_list.append(tder)
         df1_list.append(df1)
         acc_u_list.append(acc_u)
-    print(f"avg DF1: {sum(df1_list) / len(df1_list)}, avg TDER: {sum(tder_list) / len(tder_list)}, avg acc utterance: {sum(acc_u_list) / len(acc_u_list)}")
+        sen_num_list.append(sen_num)
+        word_num_list.append(word_num)
+    print("\n==================================================================================")
+    print(f"Val avg DF1: {sum(df1_list) / len(df1_list)}, Val avg TDER: {sum(tder_list) / len(tder_list)}, Val avg acc utterance: {sum(acc_u_list) / len(acc_u_list)}")
+    total_weights = sum(sen_num_list)
+    weighted_tder_sum = sum(t * w for t, w in zip(tder_list, sen_num_list))
+    weighted_df1_sum = sum(d * w for d, w in zip(df1_list, sen_num_list))
+    weighted_acc_u_sum = sum(a * w for a, w in zip(acc_u_list, sen_num_list))
+    print(f"(Sentence-level Weighted) Val avg DF1: {weighted_df1_sum / total_weights}, Val avg TDER: {weighted_tder_sum / total_weights}, Val avg acc utterance: {weighted_acc_u_sum / total_weights}")
+    total_weights = sum(word_num_list)
+    weighted_tder_sum = sum(t * w for t, w in zip(tder_list, word_num_list))
+    weighted_df1_sum = sum(d * w for d, w in zip(df1_list, word_num_list))
+    weighted_acc_u_sum = sum(a * w for a, w in zip(acc_u_list, word_num_list))
+    print(f"(Word-level Weighted) Val avg DF1: {weighted_df1_sum / total_weights}, Val avg TDER: {weighted_tder_sum / total_weights}, Val avg acc utterance: {weighted_acc_u_sum / total_weights}")
+    print("==================================================================================\n")

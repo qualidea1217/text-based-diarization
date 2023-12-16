@@ -32,10 +32,6 @@ dir_dict = {"AMI audio": "/local/scratch/pwu54/Text-based SD Dataset/AMI/audio/"
             "SBCSAE text": "/local/scratch/pwu54/Text-based SD Dataset/SBCSAE/whisper_output/"}
 
 # Hyper parameters
-ENCODER_MAX_LENGTH = 512
-DECODER_MAX_LENGTH = 512
-BATCH_SIZE = 32
-EPOCHS = 3
 CHANGE_POINT = " <change> "
 
 
