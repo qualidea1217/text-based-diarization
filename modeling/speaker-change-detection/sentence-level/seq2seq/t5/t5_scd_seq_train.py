@@ -6,10 +6,10 @@ from tqdm import tqdm
 from transformers import T5Tokenizer, T5ForConditionalGeneration, Seq2SeqTrainer, Seq2SeqTrainingArguments
 
 # Hyper parameters
-ENCODER_MAX_LENGTH = 256
+ENCODER_MAX_LENGTH = 448
 DECODER_MAX_LENGTH = 64
-BATCH_SIZE = 8
-EPOCHS = 3
+BATCH_SIZE = 4
+EPOCHS = 5
 CHANGE_POINT = " <change> "
 
 
@@ -125,12 +125,12 @@ if __name__ == "__main__":
 
     # 3. Define Training Arguments and Initialize Trainer
     training_args = Seq2SeqTrainingArguments(
-        output_dir='./results/t5-11b-d7-scd-26-3e5',
+        output_dir='./results/t5-11b-d7-scd-26-6e5',
         num_train_epochs=EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
         optim="adamw_apex_fused",
-        learning_rate=3e-5,
-        # gradient_accumulation_steps=4,
+        learning_rate=6e-5,
+        gradient_accumulation_steps=2,
         # gradient_checkpointing=True,
         bf16=True,
         save_strategy="epoch",
