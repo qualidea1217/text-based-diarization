@@ -1,18 +1,17 @@
 import json
 import string
-from multiprocessing import Pool
-from tqdm import tqdm
 
 from datasets import Dataset
+from tqdm import tqdm
 from transformers import T5Tokenizer, T5ForConditionalGeneration, Seq2SeqTrainer, Seq2SeqTrainingArguments
-
 
 # Hyper parameters
 ENCODER_MAX_LENGTH = 512
-DECODER_MAX_LENGTH = 512
-BATCH_SIZE = 32
+DECODER_MAX_LENGTH = 16
+MAX_SPEAKER = float("inf")
+BATCH_SIZE = 8
 EPOCHS = 3
-BEGIN_OF_SENTENCE = " <bos> "
+CHANGE_POINT = " <change> "
 
 
 def speaker_to_ints(input_list):
@@ -40,7 +39,7 @@ def process_data_to_model_inputs(batch):
     return batch
 
 
-def preprocess_data(data_dir: str, min_sentence_num: int = 1, max_sentence_num: int | float = float("inf")):
+def preprocess_data(data_dir: str, min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
     with open(data_dir, 'r') as json_in:
         data_dict = json.load(json_in)
         conversations = data_dict["text_list"]
@@ -49,82 +48,39 @@ def preprocess_data(data_dir: str, min_sentence_num: int = 1, max_sentence_num: 
     output_list = []
     for conversation, speaker_label in tqdm(zip(conversations, speaker_labels), total=len(conversations)):
         conversation_filter = [conversation[i] for i in range(len(conversation)) if
-                               conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
+                            conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
         speaker_label_filter = [speaker_label[i] for i in range(len(speaker_label)) if
-                                conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
+                               conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
         conversation, speaker_label = conversation_filter, speaker_label_filter
         for i in range(len(conversation)):
             for j in range(i + min_sentence_num, len(conversation) + 1):
-                if len(set(speaker_label[i:j])) > 2:
+                if len(set(speaker_label[i:j])) > MAX_SPEAKER:
                     break
                 if j - i > max_sentence_num:
                     break
-                input_text = "".join([BEGIN_OF_SENTENCE + sentence for sentence in conversation[i:j]])
-                output_text = " ".join([str(speaker) for speaker in speaker_label[i:j]])
+                input_text = CHANGE_POINT.join([sentence for sentence in conversation[i:j]])
+                output_text = ''.join(map(str, speaker_to_ints(speaker_label[i:j])))
                 if len(tokenizer.encode(input_text)) > ENCODER_MAX_LENGTH:
-                    break
+                    print(f"input length over max, max: {ENCODER_MAX_LENGTH}, actual: {len(tokenizer.encode(input_text))}")
+                if len(tokenizer.encode(output_text)) > DECODER_MAX_LENGTH:
+                    print(f"input length over max, max: {DECODER_MAX_LENGTH}, actual: {len(tokenizer.encode(output_text))}")
                 input_list.append(input_text)
                 output_list.append(output_text)
-    return input_list, output_list
-
-
-def preprocess_data_chunk(args):
-    conversations_chunk, speaker_labels_chunk, min_sentence_num, max_sentence_num = args
-    input_list = []
-    output_list = []
-    for conversation, speaker_label in tqdm(zip(conversations_chunk, speaker_labels_chunk), total=len(conversations_chunk)):
-        conversation_filter = [conversation[i] for i in range(len(conversation)) if
-                               conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
-        speaker_label_filter = [speaker_label[i] for i in range(len(speaker_label)) if
-                                conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
-        conversation, speaker_label = conversation_filter, speaker_label_filter
-        for i in range(len(conversation)):
-            for j in range(i + min_sentence_num, len(conversation) + 1):
-                if len(set(speaker_label[i:j])) > 2:
-                    break
-                if j - i > max_sentence_num:
-                    break
-                input_text = "".join([BEGIN_OF_SENTENCE + sentence for sentence in conversation[i:j]])
-                output_text = " ".join([str(speaker) for speaker in speaker_label[i:j]])
-                if len(tokenizer.encode(input_text)) > ENCODER_MAX_LENGTH:
-                    break
-                input_list.append(input_text)
-                output_list.append(output_text)
-    return input_list, output_list
-
-
-def preprocess_data_parallel(data_dir: str, min_sentence_num: int = 1, max_sentence_num: int | float = float("inf")):
-    input_list = []
-    output_list = []
-    with open(data_dir, 'r') as json_in:
-        data_dict = json.load(json_in)
-        conversations = data_dict["text_list"]
-        speaker_labels = [speaker_to_ints(speaker_ids) for speaker_ids in data_dict["speaker_list"]]
-    num_cores = 8
-    chunk_size = len(conversations) // num_cores
-    args = [
-        (conversations[i:i + chunk_size], speaker_labels[i:i + chunk_size], min_sentence_num, max_sentence_num)
-        for i in range(0, len(conversations), chunk_size)
-    ]
-    with Pool(num_cores) as pool:
-        results = pool.map(preprocess_data_chunk, args)
-    for res in results:
-        input_list.extend(res[0])
-        output_list.extend(res[1])
     return input_list, output_list
 
 
 if __name__ == "__main__":
     # Load tokenizer and model
-    tokenizer = T5Tokenizer.from_pretrained('t5-3b', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)
-    tokenizer.add_special_tokens({"additional_special_tokens": [BEGIN_OF_SENTENCE]})
-    tokenizer.save_pretrained(f"./tokenizer_bos")
+    # tokenizer = T5Tokenizer.from_pretrained('t5-11b', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)
+    # tokenizer.add_special_tokens({"additional_special_tokens": [CHANGE_POINT]})
+    # tokenizer.save_pretrained("./tokenizer_change_11b")
+    tokenizer = T5Tokenizer.from_pretrained("./tokenizer_change")
     model = T5ForConditionalGeneration.from_pretrained('t5-3b', cache_dir="./models")
     model.resize_token_embeddings(len(tokenizer))
 
     # Create dataset and dataloader
-    data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent_2sp.json"
-    input_train, output_train = preprocess_data(data_train_dir, 2, 4)
+    data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json"
+    input_train, output_train = preprocess_data(data_train_dir, 2, 8)
     dataset_train = Dataset.from_dict({"conversations": input_train, "speaker_labels": output_train})
     dataset_train = dataset_train.map(
         process_data_to_model_inputs,
@@ -140,15 +96,15 @@ if __name__ == "__main__":
 
     # 3. Define Training Arguments and Initialize Trainer
     training_args = Seq2SeqTrainingArguments(
-        output_dir='./results/t5-3b',
+        output_dir='./results/t5-3b-interview-0-sd-8-6e5',
         num_train_epochs=EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
         optim="adafactor",
-        learning_rate=1e-4,
-        # gradient_accumulation_steps=4,
-        gradient_checkpointing=True,
+        learning_rate=6e-5,
+        gradient_accumulation_steps=4,
+        # gradient_checkpointing=True,
         bf16=True,
-        save_strategy="epoch"
+        save_strategy="epoch",
     )
 
     trainer = Seq2SeqTrainer(

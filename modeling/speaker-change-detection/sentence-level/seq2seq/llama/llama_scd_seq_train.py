@@ -3,15 +3,16 @@ import string
 
 from datasets import Dataset
 from tqdm import tqdm
-from transformers import T5Tokenizer, T5ForConditionalGeneration, Seq2SeqTrainer, Seq2SeqTrainingArguments
+from transformers import AutoTokenizer, AutoModelForCausalLM, Seq2SeqTrainer, Seq2SeqTrainingArguments
 
 # Hyper parameters
-ENCODER_MAX_LENGTH = 512
-DECODER_MAX_LENGTH = 16
+MAX_LENGTH = 512  # decoder-only model requires input and output having same length
 MAX_SPEAKER = float("inf")
 BATCH_SIZE = 8
 EPOCHS = 3
 CHANGE_POINT = " <change> "
+
+hf_token = ""  # REMOVE THIS BEFORE COMMIT & PUSH!!!
 
 
 def speaker_to_ints(input_list):
@@ -26,8 +27,8 @@ def speaker_to_ints(input_list):
 
 def process_data_to_model_inputs(batch):
     # tokenize the inputs and labels
-    inputs = tokenizer(batch["conversations"], padding="max_length", truncation=True, max_length=ENCODER_MAX_LENGTH)
-    outputs = tokenizer(batch["speaker_labels"], padding="max_length", truncation=True, max_length=DECODER_MAX_LENGTH)
+    inputs = tokenizer(batch["conversations"], padding="max_length", truncation=True, max_length=MAX_LENGTH)
+    outputs = tokenizer(batch["speaker_labels"], padding="max_length", truncation=True, max_length=MAX_LENGTH)
     batch["input_ids"] = inputs.input_ids
     batch["attention_mask"] = inputs.attention_mask
     batch["labels"] = outputs.input_ids
@@ -61,10 +62,12 @@ def preprocess_data(data_dir: str, min_sentence_num: int = 2, max_sentence_num: 
                 input_text = CHANGE_POINT.join([sentence for sentence in conversation[i:j]])
                 output_text = ''.join(["1" if speaker_label[i:j][k] != speaker_label[i:j][k - 1] else "0"
                                         for k in range(1, len(speaker_label[i:j]))])
-                if len(tokenizer.encode(input_text)) > ENCODER_MAX_LENGTH:
-                    print(f"input length over max, max: {ENCODER_MAX_LENGTH}, actual: {len(tokenizer.encode(input_text))}")
-                if len(tokenizer.encode(output_text)) > DECODER_MAX_LENGTH:
-                    print(f"input length over max, max: {DECODER_MAX_LENGTH}, actual: {len(tokenizer.encode(output_text))}")
+                if len(tokenizer.encode(input_text)) > MAX_LENGTH:
+                    print(f"input length over max, max: {MAX_LENGTH}, actual: {len(tokenizer.encode(input_text))}")
+                    continue
+                if len(tokenizer.encode(output_text)) > MAX_LENGTH:
+                    print(f"input length over max, max: {MAX_LENGTH}, actual: {len(tokenizer.encode(output_text))}")
+                    continue
                 input_list.append(input_text)
                 output_list.append(output_text)
     return input_list, output_list
@@ -94,7 +97,7 @@ def preprocess_data_single_pred(data_dir: str, min_sentence_num: int = 2, max_se
                              input_text.split(CHANGE_POINT)[-1]
                 output_text = ["1" if speaker_label[i:j][k] != speaker_label[i:j][k - 1] else "0" for k in
                                range(1, len(speaker_label[i:j]))][-1]
-                if len(tokenizer.encode(input_text)) > ENCODER_MAX_LENGTH:
+                if len(tokenizer.encode(input_text)) > MAX_LENGTH:
                     break
                 input_list.append(input_text)
                 output_list.append(output_text)
@@ -103,21 +106,22 @@ def preprocess_data_single_pred(data_dir: str, min_sentence_num: int = 2, max_se
 
 if __name__ == "__main__":
     # Load tokenizer and model
-    # tokenizer = T5Tokenizer.from_pretrained('t5-11b', cache_dir="./tokenizers", model_max_length=ENCODER_MAX_LENGTH)
-    # tokenizer.add_special_tokens({"additional_special_tokens": [CHANGE_POINT]})
-    # tokenizer.save_pretrained("./tokenizer_change_11b")
-    tokenizer = T5Tokenizer.from_pretrained("./tokenizer_change")
-    model = T5ForConditionalGeneration.from_pretrained('t5-3b', cache_dir="./models")
+    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf", cache_dir="./tokenizers", model_max_length=MAX_LENGTH, token=hf_token)
+    tokenizer.add_special_tokens({"pad_token": "<pad>", "additional_special_tokens": [CHANGE_POINT]})
+    tokenizer.save_pretrained("./tokenizer_change")
+    # tokenizer = AutoTokenizer.from_pretrained("./tokenizer_change")
+    model = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-2-7b-hf", cache_dir="./models", token=hf_token)
     model.resize_token_embeddings(len(tokenizer))
 
     # Create dataset and dataloader
-    data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json"
+    # data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json"
+    data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent_2sp.json"
     input_train, output_train = preprocess_data(data_train_dir, 2, 8)
     dataset_train = Dataset.from_dict({"conversations": input_train, "speaker_labels": output_train})
     dataset_train = dataset_train.map(
         process_data_to_model_inputs,
         batched=True,
-        # num_proc=8,
+        num_proc=8,
         remove_columns=["conversations", "speaker_labels"],
     )
 
@@ -128,16 +132,16 @@ if __name__ == "__main__":
 
     # 3. Define Training Arguments and Initialize Trainer
     training_args = Seq2SeqTrainingArguments(
-        output_dir='./results/t5-3b-interview-scd-28-5e5',
+        output_dir='./results/llama2-7b-d7-scd-28-1e4',
         num_train_epochs=EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
-        optim="adafactor",
-        learning_rate=5e-5,
-        gradient_accumulation_steps=4,
+        optim="adamw_torch",
+        learning_rate=1e-4,
+        gradient_accumulation_steps=2,
         # gradient_checkpointing=True,
         bf16=True,
         save_strategy="epoch",
-        # deepspeed="./deepspeed_config_zero2_offloadopt.json",
+        deepspeed="./deepspeed_config_zero2_offloadopt.json",
     )
 
     trainer = Seq2SeqTrainer(
@@ -148,4 +152,5 @@ if __name__ == "__main__":
     )
 
     # 4. Train the Model
+    model.train()
     trainer.train()

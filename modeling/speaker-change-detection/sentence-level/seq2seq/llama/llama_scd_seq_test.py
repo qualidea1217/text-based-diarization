@@ -1,15 +1,12 @@
-import copy
 import json
 import os
 import random
 import string
 
-import numpy as np
 import spacy
 import torch
-from scipy.optimize import linear_sum_assignment
 from tqdm import tqdm
-from transformers import T5Tokenizer, T5ForConditionalGeneration
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 
 dir_dict = {"AMI audio": "/local/scratch/pwu54/Text-based SD Dataset/AMI/audio/",
@@ -36,17 +33,6 @@ dir_dict = {"AMI audio": "/local/scratch/pwu54/Text-based SD Dataset/AMI/audio/"
 
 # Hyper parameters
 CHANGE_POINT = " <change> "
-MAX_SPEAKER = float("inf")
-
-
-def speaker_to_ints(input_list):
-    unique_dict = {}
-    output_list = []
-    for item in input_list:
-        if item not in unique_dict:
-            unique_dict[item] = len(unique_dict)
-        output_list.append(unique_dict[item])
-    return output_list
 
 
 def get_train_val_test_filepath(gt_dir, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1, seed=42):
@@ -105,75 +91,35 @@ def preprocess_conversation(content, merge: bool = True, segment: bool = True):
     return text_list, speaker_list
 
 
+def recreate_speaker_label_2sp(conversation: list[str], speaker_change_pred: list, speaker_label: None | list):
+    if len(conversation) - 1 != len(speaker_change_pred):
+        raise ValueError("Length of y_pred_list should be one less than the length of conversation.")
+    speaker_label_int = [0]
+    for change in speaker_change_pred:
+        current_speaker = (speaker_label_int[-1] + change) % 2
+        speaker_label_int.append(current_speaker)
+    if speaker_label:
+        seen = {}
+        occurrence2label = []
+        for label in speaker_label:
+            if label not in seen:
+                seen[label] = len(seen)
+                occurrence2label.append(label)
+            if len(occurrence2label) >= 2:
+                break
+        speaker_label_pred = [occurrence2label[i] for i in speaker_label_int]
+    else:
+        speaker_label_pred = speaker_label_int
+    return speaker_label_pred
+
+
 def get_conversation_w_speaker(conversation: list[str], speaker_label: list):
     return [[speaker_label[i], conversation[i]] for i in range(len(conversation))]
 
 
-def get_global_label(speaker_label_pred: list, speaker_num: int | None = None) -> list:
-    speaker_label_pred_global = copy.deepcopy(speaker_label_pred)
-    for i in range(len(speaker_label_pred_global) - 1):
-        if speaker_label_pred_global[i][0][0] == 0 and speaker_label_pred_global[i + 1][0][0] == 0:
-            sentence_range, label = next((e for e in reversed(speaker_label_pred_global) if e[0][0] == 0))
-            sentence_range_next, label_next = speaker_label_pred_global[i]
-        else:
-            sentence_range, label = speaker_label_pred_global[i]
-            sentence_range_next, label_next = speaker_label_pred_global[i + 1]
-        intersection = (max(sentence_range[0], sentence_range_next[0]), min(sentence_range[1], sentence_range_next[1]))
-        label_index_range = (intersection[0] - sentence_range[0], intersection[1] - sentence_range[0])
-        label_next_index_range = (intersection[0] - sentence_range_next[0], intersection[1] - sentence_range_next[0])
-        label_map = find_label_mapping_int(label[label_index_range[0]:label_index_range[1]],
-                                           label_next[label_next_index_range[0]:label_next_index_range[1]])
-        label_next_global = [label_map.get(ln, '*') for ln in label_next]
-
-        # Handle new speaker that is not in the mapping (new speaker in the end)
-        for j in range(len(label_next)):
-            if label_next_global[j] == '*':
-                if speaker_num is None:
-                    label_next_global[j] = max([e for e in label_next_global if e != '*']) + 1
-                else:
-                    label_next_global[j] = (max([e for e in label_next_global if e != '*']) + 1) % speaker_num
-
-        if speaker_label_pred_global[i][0][0] == 0 and speaker_label_pred_global[i + 1][0][0] == 0:
-            speaker_label_pred_global[i] = (sentence_range_next, label_next_global)
-        else:
-            speaker_label_pred_global[i + 1] = (sentence_range_next, label_next_global)
-    return speaker_label_pred_global
-
-
-def find_label_mapping_int(ref_labels: list[int], new_labels: list[int], sentence_lengths: list[int] = None) -> dict:
-    # Use the previously defined function to find the label mapping for the new lists
-    # Adjusting the function to work with integer labels within the execution cell for direct execution
-    # potential improvement: add length of sentence as a weight
-    if len(ref_labels) != len(new_labels):
-        raise ValueError("Reference and new labels must have the same length.")
-    if sentence_lengths is None:
-        sentence_lengths = [1] * len(new_labels)  # default weight as 1 (no weight)
-    unique_ref_labels = sorted(set(ref_labels))
-    unique_new_labels = sorted(set(new_labels))
-    ref_label_to_index = {label: index for index, label in enumerate(unique_ref_labels)}
-    new_label_to_index = {label: index for index, label in enumerate(unique_new_labels)}
-    confusion_matrix = np.zeros((len(unique_ref_labels), len(unique_new_labels)), dtype=int)
-    for ref_label, new_label, sentence_length in zip(ref_labels, new_labels, sentence_lengths):
-        ref_index = ref_label_to_index[ref_label]
-        new_index = new_label_to_index[new_label]
-        confusion_matrix[ref_index, new_index] += sentence_length
-    cost_matrix = confusion_matrix.max() - confusion_matrix
-    row_ind, col_ind = linear_sum_assignment(cost_matrix)
-    mapping = {unique_new_labels[new]: unique_ref_labels[ref] for ref, new in zip(row_ind, col_ind)}
-    return mapping
-
-
-def aggregate(speaker_label_pred: list, conversation_length: int) -> list:
-    aggregation_log = [{} for _ in range(conversation_length)]
-    for sentence_range, label in speaker_label_pred:
-        for i in range(sentence_range[0], sentence_range[1]):
-            sl = label[i - sentence_range[0]]
-            aggregation_log[i][sl] = aggregation_log[i].get(sl, 0) + 1  # increment by 1
-    aggregation_result = [max(d, key=lambda k: d[k]) for d in aggregation_log]
-    return aggregation_result
-
-
 def get_conversation_metrics_exact(content: list, content_pred: list):
+    """If both conversation have exact same words and 2 speaker only,
+    both TDER and DF1 falls back to accuracy, which is 1 - WDER"""
     n_incorrect_utterance = 0
     n_total_utterance = 0
     n_incorrect_token = 0
@@ -187,9 +133,9 @@ def get_conversation_metrics_exact(content: list, content_pred: list):
     n_correct_token = n_total_token - n_incorrect_token
     n_correct_utterance = n_total_utterance - n_incorrect_utterance
     df1 = n_correct_token / n_total_token  # also accuracy on token
-    wder = n_incorrect_token / n_total_token  # also tder
+    tder = n_incorrect_token / n_total_token  # also wder
     acc_utterance = n_correct_utterance / n_total_utterance
-    return df1, wder, acc_utterance
+    return df1, tder, acc_utterance
 
 
 def predict_single_input(model, tokenizer, input_text) -> list[int]:
@@ -197,46 +143,58 @@ def predict_single_input(model, tokenizer, input_text) -> list[int]:
     with torch.no_grad():
         output = model.generate(input_ids)
     decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
+    print(decoded_output)
+    # return list(map(int, decoded_output.split()))
     return [int(c) for c in decoded_output if c in string.digits]
 
 
-def predict_conversation(model, tokenizer, conversation: list[str], speaker_label: list,
+def predict_conversation(model, tokenizer, conversation: list[str],
                          min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
     """
     Using sliding window to predict each point of change for multiple times and do majority vote
     max_sentence_num must be even number so that for each
     """
-    speaker_label_pred = []
+    speaker_change_pred = [0 for _ in range(len(conversation) - 1)]
     for i in range(min_sentence_num, len(conversation) + max_sentence_num - min_sentence_num + 1):
         begin = i - max_sentence_num if i - max_sentence_num >= 0 else 0
         end = i if i <= len(conversation) else len(conversation)
         single_input = CHANGE_POINT.join([sentence for sentence in conversation[begin:end]])
         single_output = predict_single_input(model, tokenizer, single_input)
-        speaker_label_pred.append(((begin, end), single_output))
-    speaker_label_pred_global = get_global_label(speaker_label_pred, len(set(speaker_label)))
-    aggregation_result = aggregate(speaker_label_pred_global, len(conversation))
-    for i in range(len(speaker_label_pred)):
-        label_range, label_pred = speaker_label_pred[i][0], speaker_label_pred[i][1]
-        label_ref = speaker_label[label_range[0]:label_range[1]]
-        label_pred_global = speaker_label_pred_global[i][1]
-        label_agg = aggregation_result[label_range[0]:label_range[1]]
-        print(f"label range: {label_range}")
-        print(f"label_ref: {label_ref}")
-        print(f"label_pred: {label_pred}")
-        print(f"label_pred_global: {label_pred_global}")
-        print(f"label_agg: {label_agg}")
-    return aggregation_result
+        # print(f"single input: {single_input}")
+        # print(f"single output: {single_output}")
+        try:
+            for j in range(end - begin - 1):
+                speaker_change_pred[j + begin] += single_output[j]
+        except IndexError:
+            print(single_input)
+            print(single_output)
+            exit()
+    # print(f"single output sum: {speaker_change_pred}")
+    speaker_change_pred = [0 if change < max_sentence_num / 2 else 1 for change in speaker_change_pred]
+    return speaker_change_pred
+
+
+def predict_conversation_single(model, tokenizer, conversation: list[str], max_sentence_num: int | float = float("inf")):
+    """
+    Only predict the last sentence change speaker or not compare to previous sentence.
+    """
+    speaker_change_pred = []
+    for i in range(1, len(conversation)):
+        begin = i - max_sentence_num if i - max_sentence_num >= 0 else 0
+        single_input = CHANGE_POINT.join([sentence for sentence in conversation[begin:i]])
+        single_input = " ".join(single_input.split(CHANGE_POINT)[:-1]) + CHANGE_POINT + single_input.split(CHANGE_POINT)[-1]
+        single_output = predict_single_input(model, tokenizer, single_input)
+        speaker_change_pred.append(single_output[0])
+    return speaker_change_pred
 
 
 def evaluate_conversation(model, tokenizer, conversation: list[str], speaker_label: list,
                           min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
-    speaker_label = speaker_to_ints(speaker_label)
-    speaker_label_pred = predict_conversation(model, tokenizer, conversation, speaker_label, min_sentence_num, max_sentence_num)
-    final_mapping = find_label_mapping_int(speaker_label, speaker_label_pred, [len(s.split()) for s in conversation])
-    print(final_mapping)
-    speaker_label_pred = [final_mapping[l] for l in speaker_label_pred]
-    print(f"speaker_label_pred: {speaker_label_pred}")
-    print(f"speaker_label: {speaker_label}")
+    speaker_change_pred = predict_conversation(model, tokenizer, conversation, min_sentence_num, max_sentence_num)
+    # print(f"speaker_change_pred: {speaker_change_pred}")
+    speaker_label_pred = recreate_speaker_label_2sp(conversation, speaker_change_pred, speaker_label)
+    # print(f"speaker_label_pred: {speaker_label_pred}")
+    # print(f"speaker_label: {speaker_label}")
     content = get_conversation_w_speaker(conversation, speaker_label)
     content_pred = get_conversation_w_speaker(conversation, speaker_label_pred)
     df1, tder, acc_utterance = get_conversation_metrics_exact(content, content_pred)
@@ -255,9 +213,10 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
         test_filepath_all.extend(test_filepaths)
 
     # Load tokenizer and model
-    tokenizer = T5Tokenizer.from_pretrained("./tokenizer_change")
-    model = T5ForConditionalGeneration.from_pretrained(checkpoint)
+    tokenizer = AutoTokenizer.from_pretrained("./tokenizer_change")
+    model = AutoModelForCausalLM.from_pretrained(checkpoint)
     model = model.to("cuda")
+    model.eval()
 
     tder_list = []
     df1_list = []
@@ -269,7 +228,7 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
             with open(filepath, 'r') as json_in:
                 content = json.load(json_in)  # fill in the content of conversation in this format
         conversation, speaker_label = preprocess_conversation(content)
-        if len(set(speaker_label)) > MAX_SPEAKER:
+        if len(set(speaker_label)) != 2:
             continue
         df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, min_sentence_num, max_sentence_num)
         sen_num = len(conversation)
@@ -305,7 +264,7 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
             with open(filepath, 'r') as json_in:
                 content = json.load(json_in)  # fill in the content of conversation in this format
         conversation, speaker_label = preprocess_conversation(content)
-        if len(set(speaker_label)) > MAX_SPEAKER:
+        if len(set(speaker_label)) != 2:
             continue
         df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, min_sentence_num, max_sentence_num)
         sen_num = len(conversation)
@@ -333,7 +292,4 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
 
 
 if __name__ == "__main__":
-    # evaluate_checkpoint("./results/t5-3b-d7-0-sd-8-6e5/checkpoint-257398", 2, 8)
-    evaluate_checkpoint("./results/t5-3b-d7-0-sd-8-6e5/checkpoint-386097", 2, 8)
-    evaluate_checkpoint("./results/t5-3b-d7-0-sd-8-1e4/checkpoint-257398", 2, 8)
-    evaluate_checkpoint("./results/t5-3b-d7-0-sd-8-1e4/checkpoint-386097", 2, 8)
+    evaluate_checkpoint("./results/llama2-7b-d7-scd-28-3e5/checkpoint-42381", 2, 8)

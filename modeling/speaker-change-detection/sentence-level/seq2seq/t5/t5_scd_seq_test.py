@@ -143,7 +143,8 @@ def predict_single_input(model, tokenizer, input_text) -> list[int]:
     with torch.no_grad():
         output = model.generate(input_ids)
     decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
-    return list(map(int, decoded_output.split()))
+    # return list(map(int, decoded_output.split()))
+    return [int(c) for c in decoded_output if c in string.digits]
 
 
 def predict_conversation(model, tokenizer, conversation: list[str],
@@ -153,11 +154,13 @@ def predict_conversation(model, tokenizer, conversation: list[str],
     max_sentence_num must be even number so that for each
     """
     speaker_change_pred = [0 for _ in range(len(conversation) - 1)]
-    for i in range(min_sentence_num, len(conversation) + 1 + min_sentence_num):
+    for i in range(min_sentence_num, len(conversation) + max_sentence_num - min_sentence_num + 1):
         begin = i - max_sentence_num if i - max_sentence_num >= 0 else 0
         end = i if i <= len(conversation) else len(conversation)
         single_input = CHANGE_POINT.join([sentence for sentence in conversation[begin:end]])
         single_output = predict_single_input(model, tokenizer, single_input)
+        # print(f"single input: {single_input}")
+        # print(f"single output: {single_output}")
         try:
             for j in range(end - begin - 1):
                 speaker_change_pred[j + begin] += single_output[j]
@@ -165,6 +168,7 @@ def predict_conversation(model, tokenizer, conversation: list[str],
             print(single_input)
             print(single_output)
             exit()
+    # print(f"single output sum: {speaker_change_pred}")
     speaker_change_pred = [0 if change < max_sentence_num / 2 else 1 for change in speaker_change_pred]
     return speaker_change_pred
 
@@ -186,7 +190,10 @@ def predict_conversation_single(model, tokenizer, conversation: list[str], max_s
 def evaluate_conversation(model, tokenizer, conversation: list[str], speaker_label: list,
                           min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
     speaker_change_pred = predict_conversation(model, tokenizer, conversation, min_sentence_num, max_sentence_num)
+    # print(f"speaker_change_pred: {speaker_change_pred}")
     speaker_label_pred = recreate_speaker_label_2sp(conversation, speaker_change_pred, speaker_label)
+    # print(f"speaker_label_pred: {speaker_label_pred}")
+    # print(f"speaker_label: {speaker_label}")
     content = get_conversation_w_speaker(conversation, speaker_label)
     content_pred = get_conversation_w_speaker(conversation, speaker_label_pred)
     df1, tder, acc_utterance = get_conversation_metrics_exact(content, content_pred)
@@ -283,8 +290,4 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
 
 
 if __name__ == "__main__":
-    evaluate_checkpoint("./results/t5-11b-d7-scd-26-6e5/checkpoint-15478", 2, 6)
-    evaluate_checkpoint("./results/t5-11b-d7-scd-26-6e5/checkpoint-30956", 2, 6)
-    evaluate_checkpoint("./results/t5-11b-d7-scd-26-6e5/checkpoint-46434", 2, 6)
-    evaluate_checkpoint("./results/t5-11b-d7-scd-26-6e5/checkpoint-61912", 2, 6)
-    evaluate_checkpoint("./results/t5-11b-d7-scd-26-6e5/checkpoint-77390", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-42380", 2, 8)
