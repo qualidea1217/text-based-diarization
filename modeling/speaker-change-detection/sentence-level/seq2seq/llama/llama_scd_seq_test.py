@@ -33,7 +33,7 @@ dir_dict = {"AMI audio": "/local/scratch/pwu54/Text-based SD Dataset/AMI/audio/"
 
 # Hyper parameters
 CHANGE_POINT = " <change> "
-hf_token = ""  # REMOVE THIS BEFORE COMMIT & PUSH!!!
+hf_token = "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"  # REMOVE THIS BEFORE COMMIT & PUSH!!!
 
 
 def get_train_val_test_filepath(gt_dir, train_ratio=0.8, val_ratio=0.1, test_ratio=0.1, seed=42):
@@ -140,12 +140,27 @@ def get_conversation_metrics_exact(content: list, content_pred: list):
 
 
 def predict_single_input(model, tokenizer, input_text) -> list[int]:
-    input_ids = tokenizer.encode(input_text, return_tensors="pt").to("cuda")
-    with torch.no_grad():
-        output = model.generate(input_ids)
-    decoded_output = tokenizer.decode(output[0], skip_special_tokens=True)
-    print(decoded_output)
-    # return list(map(int, decoded_output.split()))
+    system_message = "You are a helpful, respectful, and honest assistant."
+    user_message = (
+        f"Determine whether the speaker is changed or not for each point marked by{CHANGE_POINT}in the conversation. "
+        f"Give a sequence of 0 and 1 as output, 0 for unchanged, 1 for changed.\n\nConversation: {input_text}")
+    messages = [
+        {"role": "system", "content": system_message},
+        {"role": "user", "content": user_message},
+    ]
+    input_ids = tokenizer.apply_chat_template(messages, add_generation_prompt=True, return_tensors="pt").to(
+        model.device)
+    terminators = [tokenizer.eos_token_id, tokenizer.convert_tokens_to_ids("<|eot_id|>")]
+    generation_config = GenerationConfig(
+        max_new_tokens=256,
+        eos_token_id=terminators,
+        do_sample=True,
+        temperature=0.6,
+        top_p=0.9,
+    )
+    outputs = model.generate(input_ids, generation_config=generation_config)
+    response = outputs[0][input_ids.shape[-1]:]
+    decoded_output = tokenizer.decode(response, skip_special_tokens=True)
     return [int(c) for c in decoded_output if c in string.digits]
 
 
@@ -163,13 +178,11 @@ def predict_conversation(model, tokenizer, conversation: list[str],
         single_output = predict_single_input(model, tokenizer, single_input)
         # print(f"single input: {single_input}")
         # print(f"single output: {single_output}")
-        try:
-            for j in range(end - begin - 1):
+        for j in range(end - begin - 1):
+            try:
                 speaker_change_pred[j + begin] += single_output[j]
-        except IndexError:
-            print(single_input)
-            print(single_output)
-            exit()
+            except IndexError:
+                continue
     # print(f"single output sum: {speaker_change_pred}")
     speaker_change_pred = [0 if change < max_sentence_num / 2 else 1 for change in speaker_change_pred]
     return speaker_change_pred
@@ -214,7 +227,7 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
         test_filepath_all.extend(test_filepaths)
 
     # Load tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained("./tokenizer_change")
+    tokenizer = AutoTokenizer.from_pretrained("./tokenizer_pad")
     model = AutoModelForCausalLM.from_pretrained(checkpoint)
     model = model.to("cuda")
     model.eval()
@@ -293,41 +306,54 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
 
 
 if __name__ == "__main__":
-    # evaluate_checkpoint("./results/llama2-7b-d7-scd-28-3e5/checkpoint-42381", 2, 8)
-    model_id = "meta-llama/Meta-Llama-3-8B-Instruct"
+    evaluate_checkpoint("./results/llama3-8b-d7-scd-28-5e5/checkpoint-21190", 2, 8)
+    evaluate_checkpoint("./results/llama3-8b-d7-scd-28-5e5/checkpoint-42381", 2, 8)
+    evaluate_checkpoint("./results/llama3-8b-d7-scd-28-5e5/checkpoint-63570", 2, 8)
+    # model_id = "meta-llama/Meta-Llama-3-8B-Instruct"
 
-    tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir="./tokenizers")
-    model = AutoModelForCausalLM.from_pretrained(
-        model_id,
-        cache_dir="./models",
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
+    # tokenizer = AutoTokenizer.from_pretrained("./tokenizer_pad")
+    # model = AutoModelForCausalLM.from_pretrained(
+    #     "./results/llama3-8b-d7-scd-28-5e5/checkpoint-42381",
+    #     torch_dtype=torch.bfloat16,
+    #     device_map="auto",
+    # )
 
-    messages = [
-        {"role": "system", "content": "You are a pirate chatbot who always responds in pirate speak!"},
-        {"role": "user", "content": "Who are you?"},
-    ]
+    # conversation = "Hello! <change> Hi there! <change> I am a llama. <change> How is your day? <change> I am good thank you."
+    # system_message = "You are a helpful, respectful, and honest assistant."
+    # user_message = (f"Determine whether the speaker is changed or not for each point marked by{CHANGE_POINT}in the conversation. "
+    #                 f"Give a sequence of 0 and 1 as output, 0 for unchanged, 1 for changed.\n\nConversation: {conversation}")
+    # messages = [
+    #     {"role": "system", "content": system_message},
+    #     {"role": "user", "content": user_message},
+    #     # {"role": "assistant", "content": speaker_change}
+    # ]
+    #
+    # input_ids = tokenizer.apply_chat_template(
+    #     messages,
+    #     tokenize=False,
+    #     add_generation_prompt=False
+    # )
+    # print(input_ids)
+    #
+    # input_ids = tokenizer.apply_chat_template(
+    #     messages,
+    #     add_generation_prompt=True,
+    #     return_tensors="pt"
+    # ).to(model.device)
+    #
+    # terminators = [
+    #     tokenizer.eos_token_id,
+    #     tokenizer.convert_tokens_to_ids("<|eot_id|>")
+    # ]
 
-    input_ids = tokenizer.apply_chat_template(
-        messages,
-        add_generation_prompt=True,
-        return_tensors="pt"
-    ).to(model.device)
-
-    terminators = [
-        tokenizer.eos_token_id,
-        tokenizer.convert_tokens_to_ids("<|eot_id|>")
-    ]
-
-    generation_config = GenerationConfig(
-        max_new_tokens=256,
-        eos_token_id=terminators,
-        do_sample=True,
-        temperature=0.6,
-        top_p=0.9,
-    )
-
-    outputs = model.generate(input_ids, generation_config=generation_config)
-    response = outputs[0][input_ids.shape[-1]:]
-    print(tokenizer.decode(response, skip_special_tokens=True))
+    # generation_config = GenerationConfig(
+    #     max_new_tokens=256,
+    #     eos_token_id=terminators,
+    #     do_sample=True,
+    #     temperature=0.6,
+    #     top_p=0.9,
+    # )
+    #
+    # outputs = model.generate(input_ids, generation_config=generation_config)
+    # response = outputs[0][input_ids.shape[-1]:]
+    # print(tokenizer.decode(response, skip_special_tokens=True))

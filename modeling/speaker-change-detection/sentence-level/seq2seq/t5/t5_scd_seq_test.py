@@ -4,6 +4,7 @@ import random
 import string
 
 import spacy
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 import torch
 from tqdm import tqdm
 from transformers import T5Tokenizer, T5ForConditionalGeneration
@@ -197,7 +198,12 @@ def evaluate_conversation(model, tokenizer, conversation: list[str], speaker_lab
     content = get_conversation_w_speaker(conversation, speaker_label)
     content_pred = get_conversation_w_speaker(conversation, speaker_label_pred)
     df1, tder, acc_utterance = get_conversation_metrics_exact(content, content_pred)
-    return df1, tder, acc_utterance
+    speaker_change = [0 if speaker_label[i] == speaker_label[i + 1] else 1 for i in range(len(speaker_label) - 1)]
+    accuracy = accuracy_score(speaker_change, speaker_change_pred)
+    precision = precision_score(speaker_change, speaker_change_pred)
+    recall = recall_score(speaker_change, speaker_change_pred)
+    f1 = f1_score(speaker_change, speaker_change_pred)
+    return df1, tder, acc_utterance, accuracy, precision, recall, f1
 
 
 def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
@@ -219,6 +225,10 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
     tder_list = []
     df1_list = []
     acc_u_list = []
+    acc_list = []
+    p_list = []
+    r_list = []
+    f1_list = []
     sen_num_list = []
     word_num_list = []
     for filepath in val_filepath_all:
@@ -228,23 +238,34 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
         conversation, speaker_label = preprocess_conversation(content)
         if len(set(speaker_label)) != 2:
             continue
-        df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, min_sentence_num, max_sentence_num)
+        df1, tder, acc_u, accuracy, precision, recall, f1 = evaluate_conversation(model, tokenizer, conversation, speaker_label, min_sentence_num, max_sentence_num)
         sen_num = len(conversation)
         word_num = sum([len(sentence.split()) for sentence in conversation])
         print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}, sentence num: {sen_num} word num: {word_num}")
+        print(f"filepath: {filepath}\naccuracy: {accuracy}, precision: {precision}, recall: {recall}, f1: {f1}")
         tder_list.append(tder)
         df1_list.append(df1)
         acc_u_list.append(acc_u)
+        acc_list.append(accuracy)
+        p_list.append(precision)
+        r_list.append(recall)
+        f1_list.append(f1)
         sen_num_list.append(sen_num)
         word_num_list.append(word_num)
     print("\n==================================================================================")
     print(f"Checkpoint: {checkpoint}")
     print(f"Val avg DF1: {sum(df1_list) / len(df1_list)}, Val avg TDER: {sum(tder_list) / len(tder_list)}, Val avg acc utterance: {sum(acc_u_list) / len(acc_u_list)}")
+    print(f"Val avg Accuracy: {sum(acc_list) / len(acc_list)}, Val avg Precision: {sum(p_list) / len(p_list)}, Val avg Recall: {sum(r_list) / len(r_list)}, Val avg F1: {sum(f1_list) / len(f1_list)}")
     total_weights = sum(sen_num_list)
     weighted_tder_sum = sum(t * w for t, w in zip(tder_list, sen_num_list))
     weighted_df1_sum = sum(d * w for d, w in zip(df1_list, sen_num_list))
     weighted_acc_u_sum = sum(a * w for a, w in zip(acc_u_list, sen_num_list))
+    weighted_acc_sum = sum(a * w for a, w in zip(acc_list, sen_num_list))
+    weighted_p_sum = sum(p * w for p, w in zip(p_list, sen_num_list))
+    weighted_r_sum = sum(r * w for r, w in zip(r_list, sen_num_list))
+    weighted_f1_sum = sum(f * w for f, w in zip(f1_list, sen_num_list))
     print(f"(Sentence-level Weighted) Val avg DF1: {weighted_df1_sum / total_weights}, Val avg TDER: {weighted_tder_sum / total_weights}, Val avg acc utterance: {weighted_acc_u_sum / total_weights}")
+    print(f"(Sentence-level Weighted) Val avg Accuracy: {weighted_acc_sum / total_weights}, Val avg Precision: {weighted_p_sum / total_weights}, Val avg Recall: {weighted_r_sum / total_weights}, Val avg F1: {weighted_f1_sum / total_weights}")
     total_weights = sum(word_num_list)
     weighted_tder_sum = sum(t * w for t, w in zip(tder_list, word_num_list))
     weighted_df1_sum = sum(d * w for d, w in zip(df1_list, word_num_list))
@@ -255,6 +276,10 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
     tder_list = []
     df1_list = []
     acc_u_list = []
+    acc_list = []
+    p_list = []
+    r_list = []
+    f1_list = []
     sen_num_list = []
     word_num_list = []
     for filepath in test_filepath_all:
@@ -264,23 +289,34 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
         conversation, speaker_label = preprocess_conversation(content)
         if len(set(speaker_label)) != 2:
             continue
-        df1, tder, acc_u = evaluate_conversation(model, tokenizer, conversation, speaker_label, min_sentence_num, max_sentence_num)
+        df1, tder, acc_u, accuracy, precision, recall, f1 = evaluate_conversation(model, tokenizer, conversation, speaker_label, min_sentence_num, max_sentence_num)
         sen_num = len(conversation)
         word_num = sum([len(sentence.split()) for sentence in conversation])
         print(f"filepath: {filepath}\nDF1: {df1}, TDER: {tder}, ACC_U: {acc_u}, sentence num: {sen_num} word num: {word_num}")
+        print(f"filepath: {filepath}\naccuracy: {accuracy}, precision: {precision}, recall: {recall}, f1: {f1}")
         tder_list.append(tder)
         df1_list.append(df1)
         acc_u_list.append(acc_u)
+        acc_list.append(accuracy)
+        p_list.append(precision)
+        r_list.append(recall)
+        f1_list.append(f1)
         sen_num_list.append(sen_num)
         word_num_list.append(word_num)
     print("\n==================================================================================")
     print(f"Checkpoint: {checkpoint}")
     print(f"Test avg DF1: {sum(df1_list) / len(df1_list)}, Test avg TDER: {sum(tder_list) / len(tder_list)}, Test avg acc utterance: {sum(acc_u_list) / len(acc_u_list)}")
+    print(f"Val avg Accuracy: {sum(acc_list) / len(acc_list)}, Val avg Precision: {sum(p_list) / len(p_list)}, Val avg Recall: {sum(r_list) / len(r_list)}, Val avg F1: {sum(f1_list) / len(f1_list)}")
     total_weights = sum(sen_num_list)
     weighted_tder_sum = sum(t * w for t, w in zip(tder_list, sen_num_list))
     weighted_df1_sum = sum(d * w for d, w in zip(df1_list, sen_num_list))
     weighted_acc_u_sum = sum(a * w for a, w in zip(acc_u_list, sen_num_list))
+    weighted_acc_sum = sum(a * w for a, w in zip(acc_list, sen_num_list))
+    weighted_p_sum = sum(p * w for p, w in zip(p_list, sen_num_list))
+    weighted_r_sum = sum(r * w for r, w in zip(r_list, sen_num_list))
+    weighted_f1_sum = sum(f * w for f, w in zip(f1_list, sen_num_list))
     print(f"(Sentence-level Weighted) Test avg DF1: {weighted_df1_sum / total_weights}, Test avg TDER: {weighted_tder_sum / total_weights}, Test avg acc utterance: {weighted_acc_u_sum / total_weights}")
+    print(f"(Sentence-level Weighted) Val avg Accuracy: {weighted_acc_sum / total_weights}, Val avg Precision: {weighted_p_sum / total_weights}, Val avg Recall: {weighted_r_sum / total_weights}, Val avg F1: {weighted_f1_sum / total_weights}")
     total_weights = sum(word_num_list)
     weighted_tder_sum = sum(t * w for t, w in zip(tder_list, word_num_list))
     weighted_df1_sum = sum(d * w for d, w in zip(df1_list, word_num_list))
@@ -290,4 +326,23 @@ def evaluate_checkpoint(checkpoint: str, min_sentence_num: int = 2, max_sentence
 
 
 if __name__ == "__main__":
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-3e5/checkpoint-9494", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-3e5/checkpoint-18988", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-3e5/checkpoint-28482", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-4e5/checkpoint-9494", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-4e5/checkpoint-18988", 2, 4)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-24-4e5/checkpoint-28482", 2, 4)
+
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-2e5/checkpoint-15477", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-2e5/checkpoint-30955", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-2e5/checkpoint-46431", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-15477", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-30955", 2, 6)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-26-3e5/checkpoint-46431", 2, 6)
+
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-21190", 2, 8)
     evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-42380", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-2e5/checkpoint-63570", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-21190", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-42380", 2, 8)
+    evaluate_checkpoint("./results/t5-3b-d7-scd-28-3e5/checkpoint-63570", 2, 8)

@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH --job-name=llama3-8b-d7-scd-28-1e4
-#SBATCH --output=llama3-8b-d7-scd-28-1e4.txt
+#SBATCH --job-name=llama3-8b-d7-scd-28-5e5
+#SBATCH --output=llama3-8b-d7-scd-28-5e5.txt
 #SBATCH --mem=256G
 #SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=48

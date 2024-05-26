@@ -12,13 +12,13 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, Trainer, TrainingA
 # Hyper parameters
 SEED = 42
 INPUT_MAX_LENGTH = 512
-OUTPUT_MAX_LENGTH = 16
+OUTPUT_MAX_LENGTH = 512
 MAX_SPEAKER = float("inf")
 BATCH_SIZE = 8
 EPOCHS = 3
 CHANGE_POINT = " <change> "
 
-hf_token = ""  # REMOVE THIS BEFORE COMMIT & PUSH!!!
+hf_token = "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"  # REMOVE THIS BEFORE COMMIT & PUSH!!!
 
 
 def seed_everything(seed: int):
@@ -41,21 +41,13 @@ def speaker_to_ints(input_list):
     return output_list
 
 
-def process_data_to_model_inputs(batch):
-    # tokenize the inputs and labels
-    inputs = tokenizer(batch["conversations"], padding=True, truncation=True, max_length=INPUT_MAX_LENGTH)
-    outputs = tokenizer(text_target=batch["speaker_labels"], padding=True, truncation=True, max_length=OUTPUT_MAX_LENGTH)
-    inputs["labels"] = outputs["input_ids"]
-    return inputs
-
-
-def preprocess_data(data_dir: str, min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
+def format_input_output(data_dir: str, min_sentence_num: int = 2, max_sentence_num: int | float = float("inf")):
     with open(data_dir, 'r') as json_in:
         data_dict = json.load(json_in)
         conversations = data_dict["text_list"]
         speaker_labels = [speaker_to_ints(speaker_ids) for speaker_ids in data_dict["speaker_list"]]
-    input_list = []
-    output_list = []
+    conversation_list = []
+    speaker_change_list = []
     for conversation, speaker_label in tqdm(zip(conversations, speaker_labels), total=len(conversations)):
         conversation_filter = [conversation[i] for i in range(len(conversation)) if
                             conversation[i] not in string.punctuation and conversation[i] not in string.whitespace]
@@ -75,41 +67,70 @@ def preprocess_data(data_dir: str, min_sentence_num: int = 2, max_sentence_num: 
                     print(f"input length over max, max: {INPUT_MAX_LENGTH}, actual: {len(tokenizer.encode(input_text))}")
                 if len(tokenizer.encode(output_text)) > OUTPUT_MAX_LENGTH:
                     print(f"input length over max, max: {OUTPUT_MAX_LENGTH}, actual: {len(tokenizer.encode(output_text))}")
-                input_list.append(input_text)
-                output_list.append(output_text)
-    return input_list, output_list
+                conversation_list.append(input_text)
+                speaker_change_list.append(output_text)
+    return conversation_list, speaker_change_list
+
+
+def map_function(batch):
+    input_ids = tokenizer.apply_chat_template(
+        batch["chat"],
+        tokenize=True,
+        add_generation_prompt=False,
+        padding=True,
+        max_length=INPUT_MAX_LENGTH,
+        truncation=True
+    )
+    input_ids = torch.tensor(input_ids, dtype=torch.int)
+    labels = input_ids.clone()
+    labels[labels == tokenizer.pad_token_id] = -100
+    attention_mask = input_ids.ne(tokenizer.pad_token_id)
+    return dict(input_ids=input_ids, labels=labels, attention_mask=attention_mask)
 
 
 if __name__ == "__main__":
     seed_everything(SEED)
     # Load tokenizer and model
-    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B", cache_dir="./tokenizers", model_max_length=INPUT_MAX_LENGTH, token=hf_token)
-    tokenizer.add_special_tokens({"pad_token": "<pad>", "additional_special_tokens": [CHANGE_POINT]})
-    tokenizer.save_pretrained("./tokenizer_change")
+    model_id = "meta-llama/Meta-Llama-3-8B-Instruct"
+    tokenizer = AutoTokenizer.from_pretrained(model_id, cache_dir="./tokenizers", token=hf_token)
+    tokenizer.add_special_tokens({"pad_token": "<pad>"})
+    tokenizer.save_pretrained("./tokenizer_pad")
     # tokenizer = AutoTokenizer.from_pretrained("./tokenizer_change")
-    model = AutoModelForCausalLM.from_pretrained("meta-llama/Meta-Llama-3-8B", cache_dir="./models", token=hf_token)
+    model = AutoModelForCausalLM.from_pretrained(model_id, cache_dir="./models", token=hf_token)
     model.resize_token_embeddings(len(tokenizer))
+    model.config.pad_token_id = tokenizer.pad_token_id
 
     # Create dataset and dataloader
     # data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/INTERVIEW/interview_sentence.json"
     data_train_dir = "/local/scratch/pwu54/Text-based SD Dataset/dataset7_align_train_sent_2sp.json"
-    input_train, output_train = preprocess_data(data_train_dir, 2, 8)
-    dataset_train = Dataset.from_dict({"conversations": input_train, "speaker_labels": output_train})
-    dataset_train = dataset_train.shuffle(seed=SEED)
+    conversation_list, speaker_change_list = format_input_output(data_train_dir, 2, 8)
+
+    chat_list = []
+    for conversation, speaker_change in zip(conversation_list, speaker_change_list):
+        system_message = "You are a helpful, respectful, and honest assistant."
+        user_message = f"""Determine whether the speaker is changed or not for each point marked by{CHANGE_POINT}in the 
+        conversation. Give a sequence of 0 and 1 as output, 0 for unchanged, 1 for changed.\n\nConversation: {conversation}"""
+        messages = [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": user_message},
+            {"role": "assistant", "content": speaker_change}
+        ]
+        chat_list.append(messages)
+    dataset_train = Dataset.from_dict({"chat": chat_list})
     dataset_train = dataset_train.map(
-        process_data_to_model_inputs,
-        batched=True,
-        num_proc=8,
-        remove_columns=["conversations", "speaker_labels"],
+        map_function,
+        # batched=True,
+        num_proc=8
     )
+    dataset_train = dataset_train.shuffle(seed=SEED)
 
     # Define Training Arguments and Initialize Trainer
     training_args = TrainingArguments(
-        output_dir='./results/llama3-8b-d7-scd-28-1e4',
+        output_dir='./results/llama3-8b-d7-scd-28-5e5',
         num_train_epochs=EPOCHS,
         per_device_train_batch_size=BATCH_SIZE,
         optim="adamw_torch",
-        learning_rate=1e-4,
+        learning_rate=5e-5,
         gradient_accumulation_steps=2,
         # gradient_checkpointing=True,
         bf16=True,
